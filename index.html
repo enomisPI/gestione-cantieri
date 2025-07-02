@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gestione Cantieri e Personale - Aggiornata</title>
+<style>
+  body { font-family: Arial,sans-serif; background:#f9f9f9; margin:20px; }
+  h1,h2 { color:#2c3e50; }
+  .container { max-width: 1100px; margin: auto; }
+  .tabs { display: flex; gap:10px; margin-bottom: 20px; }
+  .tab { background:#34495e; color:#fff; padding:10px 20px; border-radius: 4px 4px 0 0; cursor: pointer; user-select:none; }
+  .tab.active { background:#2c3e50; font-weight:bold; }
+  .content { background:#fff; padding:20px; border-radius: 0 4px 4px 4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); display:none; overflow-x:auto; }
+  .content.active { display:block; }
+  label { font-weight:bold; margin-top:10px; display:block; }
+  input, select, textarea { width: 100%; padding:6px; margin-top:4px; box-sizing: border-box; }
+  textarea { resize: vertical; }
+  select[multiple] { height: 130px; }
+  button { margin-top: 10px; padding: 6px 14px; border:none; background:#3498db; color:#fff; border-radius:4px; cursor:pointer; }
+  button:hover { background:#2980b9; }
+  table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; vertical-align: top; word-wrap: break-word; }
+  th { background:#34495e; color:#fff; }
+  .btn-edit, .btn-delete { border:none; padding:5px 10px; border-radius:3px; color:#fff; cursor:pointer; }
+  .btn-edit { background:#3498db; margin-right:5px; }
+  .btn-edit:hover { background:#2980b9; }
+  .btn-delete { background:#e74c3c; }
+  .btn-delete:hover { background:#c0392b; }
+  td.date-cell { cursor:pointer; color:#2980b9; text-decoration: underline; }
+  .week-display { font-style: italic; margin-top: 6px; }
+  @media (max-width: 700px) {
+    .tabs { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Gestione Cantieri e Personale</h1>
+  <div class="tabs">
+    <div class="tab active" data-tab="cantieri">Cantieri</div>
+    <div class="tab" data-tab="personale">Personale</div>
+    <div class="tab" data-tab="pianificazione">Pianificazione</div>
+    <div class="tab" data-tab="annuale">Anteprima Annuale</div>
+  </div>
+
+  <!-- Cantieri -->
+  <div id="cantieri" class="content active">
+    <h2>Cantieri</h2>
+    <label for="nomeCantiere">Nome cantiere</label>
+    <input id="nomeCantiere" placeholder="Inserisci nome cantiere" />
+    <button id="btnSaveCant">Salva</button>
+
+    <table id="tableCantieri">
+      <thead><tr><th>Nome</th><th>Azioni</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Personale -->
+  <div id="personale" class="content">
+    <h2>Personale</h2>
+    <label for="nomePersona">Nome</label>
+    <input id="nomePersona" placeholder="Nome" />
+    <label for="cognomePersona">Cognome</label>
+    <input id="cognomePersona" placeholder="Cognome" />
+    <label for="mansionePersona">Mansione</label>
+    <input id="mansionePersona" placeholder="Mansione" />
+    <label for="notePersona">Note</label>
+    <textarea id="notePersona" rows="2" placeholder="Note su persona (opzionale)"></textarea>
+    <button id="btnSavePers">Salva</button>
+
+    <table id="tablePersonale">
+      <thead><tr><th>Nome</th><th>Cognome</th><th>Mansione</th><th>Note</th><th>Azioni</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Pianificazione -->
+  <div id="pianificazione" class="content">
+    <h2>Pianificazione</h2>
+    <label for="dataPlan">Data intervento</label>
+    <input type="date" id="dataPlan" />
+    <div class="week-display" id="weekDisplay"></div>
+    <div id="dataPlanConGiorno" style="margin-top:6px; font-weight:bold;"></div>
+
+    <label for="selectCantiere">Cantiere</label>
+    <select id="selectCantiere"></select>
+
+    <label for="selectPers">Dipendenti (seleziona uno o più)</label>
+    <select id="selectPers" multiple></select>
+
+    <label for="notePlan">Note</label>
+    <textarea id="notePlan" rows="2"></textarea>
+
+    <button id="btnAddPlan">Assegna</button>
+
+    <table id="tablePlan">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <!-- Colonne dinamiche cantieri qui -->
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button id="btnExportSettimana" style="margin-top: 10px;">Esporta pianificazione settimanale</button>
+  </div>
+
+  <!-- Anteprima Annuale -->
+  <div id="annuale" class="content">
+    <h2>Anteprima Annuale - Seleziona Settimana e Anno</h2>
+
+    <label for="numWeekSelect">Settimana #</label>
+    <input type="number" id="numWeekSelect" min="1" max="54" value="1" />
+
+    <label for="yearSelect">Anno</label>
+    <input type="number" id="yearSelect" min="2000" max="2100" value="2025" />
+
+    <table id="tableAnnual">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <!-- colonne dinamiche cantieri -->
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button id="btnExportAnnual" style="margin-top:10px;">Esporta settimana</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  // --- DATI ---
+  let cantieri = JSON.parse(localStorage.getItem('cantieri') || '[]');
+  let persone = JSON.parse(localStorage.getItem('persone') || '[]');
+  let piani = JSON.parse(localStorage.getItem('piani') || '[]');
+
+  // --- GESTIONE TABS ---
+  const tabs = document.querySelectorAll('.tab');
+  const contents = document.querySelectorAll('.content');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab).classList.add('active');
+      if(tab.dataset.tab === 'pianificazione') {
+        initPlan();
+      }
+      if(tab.dataset.tab === 'annuale') {
+        renderAnnual();
+      }
+    });
+  });
+
+  // --- UTILI ---
+  function saveToStorage() {
+    localStorage.setItem('cantieri', JSON.stringify(cantieri));
+    localStorage.setItem('persone', JSON.stringify(persone));
+    localStorage.setItem('piani', JSON.stringify(piani));
+  }
+
+  function getWeek(d) {
+    const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = target.getUTCDay() || 7;
+    target.setUTCDate(target.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+    return Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
+  }
+
+  function formatDate(d) {
+    return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth()+1)).slice(-2) + '/' + d.getFullYear();
+  }
+
+  // Ritorna nome giorno della settimana in italiano (Lunedì, Martedì,...)
+  function nomeGiorno(d) {
+    const giorni = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    return giorni[d.getDay()];
+  }
+
+  // --- CANTIERI ---
+  const inputCant = document.getElementById('nomeCantiere');
+  const btnSaveCant = document.getElementById('btnSaveCant');
+  const tableCant = document.querySelector('#tableCantieri tbody');
+  let editingCantIndex = null;
+
+  btnSaveCant.onclick = () => {
+    const val = inputCant.value.trim();
+    if(!val) return alert('Inserisci nome cantiere');
+    if(editingCantIndex !== null) {
+      cantieri[editingCantIndex] = val;
+      editingCantIndex = null;
+    } else {
+      if(cantieri.includes(val)) return alert('Cantiere già presente');
+      cantieri.push(val);
+    }
+    saveToStorage();
+    inputCant.value = '';
+    renderCant();
+    if(document.getElementById('pianificazione').classList.contains('active')) {
+      populateCantieriSelect();
+      renderPlan();
+    }
+    if(document.getElementById('annuale').classList.contains('active')) {
+      renderAnnual();
+    }
+  };
+
+  function renderCant() {
+    tableCant.innerHTML = '';
+    cantieri.forEach((c,i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${c}</td>
+        <td>
+          <button class="btn-edit" onclick="editCant(${i})">Modifica</button>
+          <button class="btn-delete" onclick="delCant(${i})">Cancella</button>
+        </td>`;
+      tableCant.appendChild(tr);
+    });
+  }
+
+  window.editCant = function(i) {
+    inputCant.value = cantieri[i];
+    editingCantIndex = i;
+  }
+
+  window.delCant = function(i) {
+    if(!confirm('Sei sicuro di cancellare questo cantiere?')) return;
+    const nomeDaCancellare = cantieri[i];
+    cantieri.splice(i,1);
+    // cancella piani associati
+    piani = piani.filter(p => p.c !== nomeDaCancellare);
+    saveToStorage();
+    renderCant();
+    renderPlan();
+    renderAnnual();
+    populateCantieriSelect();
+  }
+
+  renderCant();
+
+  // --- PERSONALE ---
+  const inputNomePers = document.getElementById('nomePersona');
+  const inputCogPers = document.getElementById('cognomePersona');
+  const inputMansione = document.getElementById('mansionePersona');
+  const inputNotePers = document.getElementById('notePersona');
+  const btnSavePers = document.getElementById('btnSavePers');
+  const tablePers = document.querySelector('#tablePersonale tbody');
+  let editingPersIndex = null;
+
+  btnSavePers.onclick = () => {
+    const n = inputNomePers.value.trim();
+    const c = inputCogPers.value.trim();
+    const m = inputMansione.value.trim();
+    const note = inputNotePers.value.trim();
+    if(!n || !c) return alert('Inserisci nome e cognome');
+    const persona = {n,c,m, note};
+    if(editingPersIndex !== null) {
+      persone[editingPersIndex] = persona;
+      editingPersIndex = null;
+    } else {
+      if(persone.some(p => p.n===n && p.c===c)) return alert('Persona già presente');
+      persone.push(persona);
+    }
+    saveToStorage();
+    inputNomePers.value = '';
+    inputCogPers.value = '';
+    inputMansione.value = '';
+    inputNotePers.value = '';
+    renderPers();
+    if(document.getElementById('pianificazione').classList.contains('active')) {
+      updatePlanLists();
+      renderPlan();
+    }
+    if(document.getElementById('annuale').classList.contains('active')) {
+      renderAnnual();
+    }
+  };
+
+  function renderPers() {
+    tablePers.innerHTML = '';
+    persone.forEach((p,i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.n}</td><td>${p.c}</td><td>${p.m || ''}</td><td>${p.note || ''}</td>
+        <td>
+          <button class="btn-edit" onclick="editPers(${i})">Modifica</button>
+          <button class="btn-delete" onclick="delPers(${i})">Cancella</button>
+        </td>`;
+      tablePers.appendChild(tr);
+    });
+  }
+
+  window.editPers = function(i) {
+    const p = persone[i];
+    inputNomePers.value = p.n;
+    inputCogPers.value = p.c;
+    inputMansione.value = p.m || '';
+    inputNotePers.value = p.note || '';
+    editingPersIndex = i;
+  }
+
+  window.delPers = function(i) {
+    if(!confirm('Sei sicuro di cancellare questa persona?')) return;
+    persone.splice(i,1);
+    // Rimuovi piani che contengono questa persona
+    piani = piani.filter(plan => !plan.p.includes(i));
+    saveToStorage();
+    renderPers();
+    renderPlan();
+    renderAnnual();
+    updatePlanLists();
+  }
+
+  renderPers();
+
+  // --- PIANIFICAZIONE ---
+  const dataPlan = document.getElementById('dataPlan');
+  const weekDisplay = document.getElementById('weekDisplay');
+  const dataPlanConGiorno = document.getElementById('dataPlanConGiorno');
+  const selectCantiere = document.getElementById('selectCantiere');
+  const selectPers = document.getElementById('selectPers');
+  const notePlan = document.getElementById('notePlan');
+  const btnAddPlan = document.getElementById('btnAddPlan');
+  const tablePlan = document.getElementById('tablePlan');
+  const tablePlanBody = tablePlan.querySelector('tbody');
+  const tablePlanHead = tablePlan.querySelector('thead tr');
+
+  // Popola select cantieri
+  function populateCantieriSelect() {
+    selectCantiere.innerHTML = '';
+    cantieri.forEach(c => {
+      const option = document.createElement('option');
+      option.value = c;
+      option.textContent = c;
+      selectCantiere.appendChild(option);
+    });
+  }
+
+  // Inizializza tab pianificazione
+  function initPlan() {
+    if(!dataPlan.value) {
+      dataPlan.value = new Date().toISOString().slice(0,10);
+    }
+    updateWeekDisplay();
+    populateCantieriSelect();
+    updatePlanLists();
+    renderPlan();
+  }
+
+  dataPlan.addEventListener('change', () => {
+    updateWeekDisplay();
+    updatePlanLists();
+    renderPlan();
+  });
+
+  // Mostra settimana e data + giorno
+  function updateWeekDisplay() {
+    if(!dataPlan.value) {
+      weekDisplay.textContent = '';
+      dataPlanConGiorno.textContent = '';
+      return;
+    }
+    const d = new Date(dataPlan.value);
+    const w = getWeek(d);
+    weekDisplay.textContent = `Settimana: ${w}`;
+
+    const f = formatDate(d);
+    const giorno = nomeGiorno(d);
+    dataPlanConGiorno.textContent = `${f} ${giorno}`;
+  }
+
+  // Dipendenti disponibili quel giorno (esclusi già assegnati) nella select multiple
+  function updatePlanLists() {
+    const usati = new Set();
+    const d = dataPlan.value;
+    piani.forEach(p => {
+      if(p.d === d) {
+        p.p.forEach(i => usati.add(i));
+      }
+    });
+    selectPers.innerHTML = '';
+    persone.forEach((p,i) => {
+      if(!usati.has(i)) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = p.n + ' ' + p.c;
+        selectPers.appendChild(option);
+      }
+    });
+  }
+
+  btnAddPlan.onclick = () => {
+    if(!dataPlan.value) return alert('Seleziona una data');
+    if(!selectCantiere.value) return alert('Seleziona un cantiere');
+    const selected = [...selectPers.selectedOptions];
+    if(selected.length === 0) return alert('Seleziona almeno un dipendente');
+    // Rimosso limite 10 dipendenti
+    const pSel = selected.map(o => +o.value);
+    const nota = notePlan.value.trim();
+
+    piani.push({
+      d: dataPlan.value,
+      c: selectCantiere.value,
+      p: pSel,
+      n: nota
+    });
+
+    saveToStorage();
+
+    notePlan.value = '';
+    selectCantiere.value = '';
+    updatePlanLists();
+    renderPlan();
+  };
+
+  // Render pianificazioni settimana della data selezionata
+  function renderPlan() {
+    tablePlanHead.innerHTML = '<th>Data</th>';
+    tablePlanBody.innerHTML = '';
+    if(!dataPlan.value) return;
+
+    const d = new Date(dataPlan.value);
+    const w = getWeek(d);
+    const y = d.getFullYear();
+
+    // Trovo tutte le date della settimana
+    const dateSettimana = getDatesOfWeek(w, y);
+
+    // Trovo cantieri usati in questa settimana
+    const cantieriUsatiSettimana = new Set();
+    piani.forEach(p => {
+      const dIntv = new Date(p.d);
+      if(getWeek(dIntv) === w && dIntv.getFullYear() === y) {
+        cantieriUsatiSettimana.add(p.c);
+      }
+    });
+    const cantieriUsatiArray = Array.from(cantieriUsatiSettimana);
+
+    // Intestazione colonne cantieri usati
+    cantieriUsatiArray.forEach(c => {
+      const th = document.createElement('th');
+      th.textContent = c;
+      tablePlanHead.appendChild(th);
+    });
+
+    // Creo righe per ogni giorno
+    dateSettimana.forEach(dataStr => {
+      const tr = document.createElement('tr');
+      const dGiorno = new Date(dataStr);
+      tr.appendChild(document.createElement('td'));
+      tr.firstChild.textContent = formatDate(dGiorno) + ' ' + nomeGiorno(dGiorno);
+
+      cantieriUsatiArray.forEach(c => {
+        const td = document.createElement('td');
+        const interventi = piani.filter(p => p.d === dataStr && p.c === c);
+        if(interventi.length === 0) {
+          td.textContent = '';
+        } else {
+          const lines = interventi.map((intv,i) => {
+            const dipNomi = intv.p.map(idx => persone[idx]?.n + ' ' + persone[idx]?.c).join(', ');
+            return `<div>
+              <strong>${dipNomi}</strong><br>
+              <em>${intv.n || ''}</em><br>
+              <button class="btn-edit" onclick="editPlanByDataCantiere('${intv.d}','${intv.c}',${i})">Modifica</button>
+              <button class="btn-delete" onclick="delPlanByDataCantiere('${intv.d}','${intv.c}',${i})">Cancella</button>
+            </div>`;
+          });
+          td.innerHTML = lines.join('<hr>');
+        }
+        tr.appendChild(td);
+      });
+
+      tablePlanBody.appendChild(tr);
+    });
+  }
+
+  // Ottieni date di settimana ISO (lun-dom)
+  function getDatesOfWeek(weekNum, year) {
+    const simple = new Date(year, 0, 1 + (weekNum - 1) * 7);
+    const dow = simple.getDay();
+    const ISOweekStart = new Date(simple);
+    if(dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    const dates = [];
+    for(let i=0; i<7; i++) {
+      const d = new Date(ISOweekStart);
+      d.setDate(d.getDate() + i);
+      dates.push(d.toISOString().slice(0,10));
+    }
+    return dates;
+  }
+
+  // Modifica intervento (data, cantiere, indice)
+  window.editPlanByDataCantiere = (d,c,iPlan) => {
+    const pianiFiltrati = piani.filter(p => p.d === d && p.c === c);
+    if(iPlan >= pianiFiltrati.length) return;
+    const plan = pianiFiltrati[iPlan];
+
+    dataPlan.value = plan.d;
+    selectCantiere.value = plan.c;
+    notePlan.value = plan.n;
+
+    [...selectPers.options].forEach(o => o.selected = false);
+    plan.p.forEach(idx => {
+      const opt = [...selectPers.options].find(o => +o.value === idx);
+      if(opt) opt.selected = true;
+    });
+
+    // Rimuovo intervento da piani (lo aggiornerò alla nuova assegnazione)
+    const idxGlobale = piani.indexOf(plan);
+    if(idxGlobale >= 0) piani.splice(idxGlobale, 1);
+    saveToStorage();
+
+    updatePlanLists();
+    renderPlan();
+  }
+
+  window.delPlanByDataCantiere = (d,c,iPlan) => {
+    if(!confirm('Sei sicuro di cancellare questo intervento?')) return;
+    const pianiFiltrati = piani.filter(p => p.d === d && p.c === c);
+    if(iPlan >= pianiFiltrati.length) return;
+    const plan = pianiFiltrati[iPlan];
+    const idxGlobale = piani.indexOf(plan);
+    if(idxGlobale >= 0) {
+      piani.splice(idxGlobale, 1);
+      saveToStorage();
+      renderPlan();
+      updatePlanLists();
+      renderAnnual();
+    }
+  }
+
+  // Export CSV settimana corrente dalla data selezionata
+  document.getElementById('btnExportSettimana').onclick = () => {
+    if(!dataPlan.value) return alert('Seleziona una data');
+    const d = new Date(dataPlan.value);
+    const w = getWeek(d);
+    const y = d.getFullYear();
+    exportWeek(w, y);
+  };
+
+  // --- ANTEPRIMA ANNUALE ---
+  const numWeekSelect = document.getElementById('numWeekSelect');
+  const yearSelect = document.getElementById('yearSelect');
+  const tableAnnualBody = document.querySelector('#tableAnnual tbody');
+  const tableAnnualHead = document.querySelector('#tableAnnual thead tr');
+  const btnExportAnnual = document.getElementById('btnExportAnnual');
+
+  function renderAnnual() {
+    tableAnnualBody.innerHTML = '';
+    tableAnnualHead.innerHTML = '<th>Data</th>';
+
+    let w = parseInt(numWeekSelect.value,10);
+    if(isNaN(w) || w < 1) w = 1;
+    else if(w > 54) w = 54;
+    numWeekSelect.value = w;
+
+    let y = parseInt(yearSelect.value,10);
+    if(isNaN(y) || y < 2000) y = new Date().getFullYear();
+    else if(y > 2100) y = new Date().getFullYear();
+    yearSelect.value = y;
+
+    const dateSettimana = getDatesOfWeek(w, y);
+
+    // Cantieri usati in settimana+anno scelti
+    const cantieriUsatiSettimana = new Set();
+    piani.forEach(p => {
+      const d = new Date(p.d);
+      if(getWeek(d) === w && d.getFullYear() === y) {
+        cantieriUsatiSettimana.add(p.c);
+      }
+    });
+    const cantieriUsatiArray = Array.from(cantieriUsatiSettimana);
+
+    cantieriUsatiArray.forEach(c => {
+      const th = document.createElement('th');
+      th.textContent = c;
+      tableAnnualHead.appendChild(th);
+    });
+
+    dateSettimana.forEach(dataStr => {
+      const tr = document.createElement('tr');
+      const d = new Date(dataStr);
+      const f = formatDate(d);
+      tr.appendChild(document.createElement('td'));
+      tr.firstChild.textContent = f;
+
+      cantieriUsatiArray.forEach(c => {
+        const td = document.createElement('td');
+        const interventi = piani.filter(p => p.d === dataStr && p.c === c);
+        if(interventi.length === 0) {
+          td.textContent = '';
+        } else {
+          const lines = interventi.map(intv => {
+            const dipNomi = intv.p.map(idx => persone[idx]?.n + ' ' + persone[idx]?.c).join(', ');
+            return `<div>
+              <strong>${dipNomi}</strong><br>
+              <em>${intv.n || ''}</em>
+            </div>`;
+          });
+          td.innerHTML = lines.join('<hr>');
+        }
+        tr.appendChild(td);
+      });
+
+      tableAnnualBody.appendChild(tr);
+    });
+  }
+
+  numWeekSelect.addEventListener('input', () => {
+    let val = parseInt(numWeekSelect.value,10);
+    if(isNaN(val) || val < 1) val = 1;
+    if(val > 54) val = 54;
+    numWeekSelect.value = val;
+    renderAnnual();
+  });
+
+  yearSelect.addEventListener('input', () => {
+    let val = parseInt(yearSelect.value,10);
+    if(isNaN(val) || val < 2000) val = 2025;
+    if(val > 2100) val = 2100;
+    yearSelect.value = val;
+    renderAnnual();
+  });
+
+  btnExportAnnual.onclick = () => {
+    const w = parseInt(numWeekSelect.value,10);
+    if(isNaN(w) || w < 1 || w > 54) return alert('Inserisci una settimana valida da 1 a 54');
+    const y = parseInt(yearSelect.value,10);
+    exportWeek(w,y);
+  };
+
+  // Export CSV
+  function exportWeek(w, anno) {
+    // Filtra piani di quella settimana e anno
+    const filtered = piani.filter(p => {
+      const d = new Date(p.d);
+      return (getWeek(d) === w && d.getFullYear() === anno);
+    });
+    if(filtered.length === 0) {
+      alert('Nessun intervento da esportare per questa settimana');
+      return;
+    }
+
+    let csv = 'Data;Cantiere;Dipendenti;Note\n';
+    filtered.forEach(p => {
+      const d = new Date(p.d);
+      const f = formatDate(d);
+      const nomi = p.p.map(idx => persone[idx]?.n + ' ' + persone[idx]?.c).join(', ');
+      const noteSafe = (p.n || '').replace(/[\n\r;]/g, ' ');
+      csv += `${f};${p.c};${nomi};${noteSafe}\n`;
+    });
+
+    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'pianificazione_settimanale.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Inizializza all'avvio
+  renderCant();
+  renderPers();
+  initPlan();
+  renderAnnual();
+
+  // Espongo funzioni globali per onclick inline (modifica/cancella)
+  window.editCant = editCant;
+  window.delCant = delCant;
+  window.editPers = editPers;
+  window.delPers = delPers;
+  window.editPlanByDataCantiere = editPlanByDataCantiere;
+  window.delPlanByDataCantiere = delPlanByDataCantiere;
+
+})();
+</script>
+
+</body>
+</html>
