@@ -112,7 +112,7 @@
 
     <button id="btnAddPlan">Assegna</button>
 
-    <table id="tablePlan">
+    <table id="tablePlan" style="margin-top: 20px;">
       <thead>
         <tr>
           <th>Data</th>
@@ -135,7 +135,7 @@
     <label for="yearSelect">Anno</label>
     <input type="number" id="yearSelect" min="2000" max="2100" value="2025" />
 
-    <table id="tableAnnual">
+    <table id="tableAnnual" style="margin-top: 15px;">
       <thead>
         <tr>
           <th>Data</th>
@@ -171,8 +171,9 @@
   let persone = [];
   let piani = [];
 
-  // Editing cantieri
+  // Editing cantieri e persone
   let editingCantId = null;
+  let editingPersId = null;
 
   // --- Elementi ---
   const tabs = document.querySelectorAll('.tab');
@@ -202,7 +203,45 @@
   const tablePlanBody = tablePlan.querySelector('tbody');
   const tablePlanHead = tablePlan.querySelector('thead tr');
 
-  // --- Funzioni Firestore con async/await in loop corretti ---
+  const numWeekSelect = document.getElementById('numWeekSelect');
+  const yearSelect = document.getElementById('yearSelect');
+  const tableAnnual = document.getElementById('tableAnnual');
+  const tableAnnualBody = tableAnnual.querySelector('tbody');
+  const tableAnnualHead = tableAnnual.querySelector('thead tr');
+  const btnExportSettimana = document.getElementById('btnExportSettimana');
+  const btnExportAnnual = document.getElementById('btnExportAnnual');
+
+  // --- FUNZIONI UTILI ---
+
+  function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+  }
+
+  function getDateFromWeek(year, week, day=1) {
+    // day = 1 lunedì, ... 7 domenica
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dow = simple.getDay();
+    const ISOweekStart = simple;
+    if (dow <= 4)
+      ISOweekStart.setDate(simple.getDate() - simple.getDay() + day);
+    else
+      ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay() + day);
+    return ISOweekStart;
+  }
+
+  function formatDate(d) {
+    return d.toISOString().split('T')[0];
+  }
+
+  function formatDateReadable(d) {
+    return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'numeric' });
+  }
+
+  // --- CARICAMENTO DATI ---
   async function caricaDati() {
     try {
       const cantiereSnap = await db.collection('cantieri').get();
@@ -225,94 +264,29 @@
     }
   }
 
-  async function salvaCantiere(nome) {
-    if(cantieri.find(c => c.nome.toLowerCase() === nome.toLowerCase())) {
-      throw new Error("Cantiere già presente");
-    }
-    await db.collection('cantieri').add({nome});
-    await caricaDati();
-  }
+  // --- CANTIERI ---
 
-  async function aggiornaCantiere(id, nome) {
-    if(cantieri.find(c => c.nome.toLowerCase() === nome.toLowerCase() && c.id !== id)) {
-      throw new Error("Cantiere già presente con questo nome");
-    }
-    await db.collection('cantieri').doc(id).update({nome});
-    await caricaDati();
-  }
-
-  async function cancellaCantiere(id) {
-    try {
-      // Prima prendi nome per cancellare piani associati
-      const cantiere = cantieri.find(c => c.id === id);
-      if(!cantiere) throw new Error("Cantiere non trovato");
-      await db.collection('cantieri').doc(id).delete();
-
-      // Cancella piani associati
-      const pianiDocs = await db.collection('piani').where('c', '==', cantiere.nome).get();
-      for(const doc of pianiDocs.docs) {
-        await doc.ref.delete();
-      }
-
-      await caricaDati();
-    } catch(e) {
-      console.error('Errore cancellazione cantiere:', e);
-      alert('Errore cancellazione cantiere: ' + e.message);
-    }
-  }
-
-  async function salvaPersona(persona) {
-    if(persone.find(p => p.n.toLowerCase() === persona.n.toLowerCase() && p.c.toLowerCase() === persona.c.toLowerCase())) {
-      throw new Error("Persona già presente");
-    }
-    await db.collection('persone').add(persona);
-    await caricaDati();
-  }
-
-  async function cancellaPersona(id) {
-    try {
-      await db.collection('persone').doc(id).delete();
-
-      // Rimuovi piani con questa persona
-      const pianiDocs = await db.collection('piani').get();
-      for(const doc of pianiDocs.docs) {
-        const data = doc.data();
-        if(data.p.includes(id)) {
-          await doc.ref.delete();
-        }
-      }
-      await caricaDati();
-    } catch(e) {
-      console.error('Errore cancellazione persona:', e);
-      alert('Errore cancellazione persona: ' + e.message);
-    }
-  }
-
-  async function salvaPianificazione(plan) {
-    await db.collection('piani').add(plan);
-    await caricaDati();
-  }
-
-  async function cancellaPianificazione(id) {
-    await db.collection('piani').doc(id).delete();
-    await caricaDati();
-  }
-
-  // --- Gestione Cantieri ---
   btnSaveCant.onclick = async () => {
     const val = inputCant.value.trim();
     if(!val) return alert('Inserisci nome cantiere');
     if(val.length > 50) return alert('Nome cantiere troppo lungo (max 50 caratteri)');
     try {
       if(editingCantId) {
-        await aggiornaCantiere(editingCantId, val);
+        // Aggiorna
+        if(cantieri.find(c => c.nome.toLowerCase() === val.toLowerCase() && c.id !== editingCantId)) {
+          throw new Error("Cantiere già presente con questo nome");
+        }
+        await db.collection('cantieri').doc(editingCantId).update({nome: val});
         editingCantId = null;
         btnSaveCant.textContent = 'Salva';
       } else {
-        await salvaCantiere(val);
+        if(cantieri.find(c => c.nome.toLowerCase() === val.toLowerCase())) {
+          throw new Error("Cantiere già presente");
+        }
+        await db.collection('cantieri').add({nome: val});
       }
       inputCant.value = '';
-      renderCant();
+      await caricaDati();
     } catch(e) {
       alert(e.message);
     }
@@ -335,7 +309,21 @@
     tableCant.querySelectorAll('button.btn-delete').forEach(btn => {
       btn.onclick = async () => {
         if(confirm('Sei sicuro di cancellare questo cantiere?')) {
-          await cancellaCantiere(btn.dataset.id);
+          try {
+            // Cancella cantiere e pianificazioni relative
+            await db.collection('cantieri').doc(btn.dataset.id).delete();
+
+            const cantiere = cantieri.find(c => c.id === btn.dataset.id);
+            if (cantiere) {
+              const pianiDocs = await db.collection('piani').where('c', '==', cantiere.nome).get();
+              for (const doc of pianiDocs.docs) {
+                await doc.ref.delete();
+              }
+            }
+            await caricaDati();
+          } catch (e) {
+            alert('Errore cancellazione: ' + e.message);
+          }
         }
       };
     });
@@ -345,13 +333,9 @@
         editingCantId = btn.dataset.id;
         inputCant.value = btn.dataset.nome;
         btnSaveCant.textContent = 'Aggiorna';
-        // Vai alla tab cantieri e focus input
-        tabs.forEach(t => {
-          t.classList.toggle('active', t.dataset.tab === 'cantieri');
-        });
-        contents.forEach(c => {
-          c.classList.toggle('active', c.id === 'cantieri');
-        });
+        // Cambia tab se serve
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'cantieri'));
+        contents.forEach(c => c.classList.toggle('active', c.id === 'cantieri'));
         inputCant.focus();
       };
     });
@@ -359,7 +343,8 @@
 
   filterCantieri.addEventListener('input', renderCant);
 
-  // --- Gestione Personale ---
+  // --- PERSONALE ---
+
   btnSavePers.onclick = async () => {
     const n = inputNomePers.value.trim();
     const c = inputCogPers.value.trim();
@@ -369,12 +354,25 @@
     if(n.length > 30 || c.length > 30) return alert('Nome o cognome troppo lungo (max 30 caratteri)');
     if(m.length > 50) return alert('Mansione troppo lunga (max 50 caratteri)');
     try {
-      await salvaPersona({n,c,m,note});
+      if(editingPersId) {
+        // Aggiorna persona
+        if(persone.find(p => p.n.toLowerCase() === n.toLowerCase() && p.c.toLowerCase() === c.toLowerCase() && p.id !== editingPersId)) {
+          throw new Error("Persona già presente");
+        }
+        await db.collection('persone').doc(editingPersId).update({n,c,m,note});
+        editingPersId = null;
+        btnSavePers.textContent = 'Salva';
+      } else {
+        if(persone.find(p => p.n.toLowerCase() === n.toLowerCase() && p.c.toLowerCase() === c.toLowerCase())) {
+          throw new Error("Persona già presente");
+        }
+        await db.collection('persone').add({n,c,m,note});
+      }
       inputNomePers.value = '';
       inputCogPers.value = '';
       inputMansione.value = '';
       inputNotePers.value = '';
-      renderPers();
+      await caricaDati();
     } catch(e) {
       alert(e.message);
     }
@@ -388,6 +386,7 @@
       tr.innerHTML = `
         <td>${p.n}</td><td>${p.c}</td><td>${p.m || ''}</td><td>${p.note || ''}</td>
         <td>
+          <button class="btn-edit" data-id="${p.id}" data-n="${p.n}" data-c="${p.c}" data-m="${p.m || ''}" data-note="${p.note || ''}">Modifica</button>
           <button class="btn-delete" data-id="${p.id}">Cancella</button>
         </td>`;
       tablePers.appendChild(tr);
@@ -396,15 +395,45 @@
     tablePers.querySelectorAll('button.btn-delete').forEach(btn => {
       btn.onclick = async () => {
         if(confirm('Sei sicuro di cancellare questa persona?')) {
-          await cancellaPersona(btn.dataset.id);
+          try {
+            await db.collection('persone').doc(btn.dataset.id).delete();
+
+            // Cancella pianificazioni dove presente questa persona
+            const pianiDocs = await db.collection('piani').get();
+            for(const doc of pianiDocs.docs) {
+              const data = doc.data();
+              if(data.p.includes(btn.dataset.id)) {
+                await doc.ref.delete();
+              }
+            }
+            await caricaDati();
+          } catch(e) {
+            alert('Errore cancellazione: ' + e.message);
+          }
         }
+      };
+    });
+
+    tablePers.querySelectorAll('button.btn-edit').forEach(btn => {
+      btn.onclick = () => {
+        editingPersId = btn.dataset.id;
+        inputNomePers.value = btn.dataset.n;
+        inputCogPers.value = btn.dataset.c;
+        inputMansione.value = btn.dataset.m;
+        inputNotePers.value = btn.dataset.note;
+        btnSavePers.textContent = 'Aggiorna';
+        // Cambia tab se serve
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'personale'));
+        contents.forEach(c => c.classList.toggle('active', c.id === 'personale'));
+        inputNomePers.focus();
       };
     });
   }
 
   filterPersone.addEventListener('input', renderPers);
 
-  // --- Gestione Pianificazione ---
+  // --- PIANIFICAZIONE ---
+
   function populateCantieriSelect() {
     selectCantiere.innerHTML = '';
     cantieri.forEach(c => {
@@ -416,67 +445,54 @@
   }
 
   function updatePlanLists() {
-    const usati = new Set();
-    const d = dataPlan.value;
-    piani.forEach(p => {
-      if(p.d === d) {
-        p.p.forEach(id => usati.add(id));
-      }
-    });
     selectPers.innerHTML = '';
     persone.forEach(p => {
-      if(!usati.has(p.id)) {
-        const option = document.createElement('option');
-        option.value = p.id;
-        option.textContent = p.n + ' ' + p.c;
-        selectPers.appendChild(option);
-      }
+      const option = document.createElement('option');
+      option.value = p.id;
+      option.textContent = p.n + ' ' + p.c;
+      selectPers.appendChild(option);
     });
   }
 
-  // Funzioni per settimana e giorno
-  function getWeekNumber(d) {
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-  }
-  function getDayName(d) {
-    return ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'][d.getDay()];
-  }
-
-  // Aggiorna info data e settimana
-  dataPlan.addEventListener('change', () => {
+  dataPlan.onchange = () => {
     if(!dataPlan.value) {
       weekDisplay.textContent = '';
       dataPlanConGiorno.textContent = '';
       return;
     }
     const d = new Date(dataPlan.value);
-    const weekNum = getWeekNumber(d);
-    weekDisplay.textContent = `Settimana #${weekNum} - ${d.getFullYear()}`;
-    dataPlanConGiorno.textContent = `${dataPlan.value} - ${getDayName(d)}`;
-    updatePlanLists();
-  });
-
-  // Salvataggio pianificazione
-  btnAddPlan.onclick = async () => {
-    const d = dataPlan.value;
-    const c = selectCantiere.value;
-    const selectedPers = Array.from(selectPers.selectedOptions).map(o => o.value);
-    const note = notePlan.value.trim();
-
-    if(!d || !c || selectedPers.length === 0) {
-      return alert('Seleziona data, cantiere e almeno un dipendente');
+    const w = getWeekNumber(d);
+    weekDisplay.textContent = `Settimana numero: ${w}`;
+    const giorniSettimana = [];
+    for(let i=1; i<=7; i++) {
+      const dd = getDateFromWeek(d.getFullYear(), w, i);
+      giorniSettimana.push(formatDateReadable(dd));
     }
+    dataPlanConGiorno.textContent = `Giorni settimana: ${giorniSettimana.join(', ')}`;
+  };
+
+  btnAddPlan.onclick = async () => {
+    const dataVal = dataPlan.value;
+    if(!dataVal) return alert('Seleziona la data dell\'intervento');
+    const cantiereVal = selectCantiere.value;
+    if(!cantiereVal) return alert('Seleziona un cantiere');
+    const selectedPers = Array.from(selectPers.selectedOptions).map(opt => opt.value);
+    if(selectedPers.length === 0) return alert('Seleziona almeno un dipendente');
+    const noteVal = notePlan.value.trim();
+
+    // Controllo per non duplicare interventi uguali con stesso cantiere e data e persone
+    // Ma per semplicità accettiamo doppi
 
     try {
-      await salvaPianificazione({d,c,p:selectedPers,n:note});
-      // Mantieni selezioni
-      updatePlanLists();
+      await db.collection('piani').add({
+        d: dataVal,
+        c: cantiereVal,
+        p: selectedPers,
+        note: noteVal
+      });
       notePlan.value = '';
-      renderPlan();
+      selectPers.selectedIndex = -1;
+      await caricaDati();
     } catch(e) {
       alert('Errore salvataggio pianificazione: ' + e.message);
     }
@@ -484,118 +500,163 @@
 
   // Render tabella pianificazione
   function renderPlan() {
-    // Lista date da mostrare: usiamo max 30 giorni intorno alla data attuale
-    const oggi = new Date();
-    const dates = [];
-    for(let i=-15; i<=15; i++) {
-      const d = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate()+i);
-      dates.push(d.toISOString().slice(0,10));
-    }
-
-    // Costruiamo intestazione tabella con cantieri
+    // Pulisco intestazione, rendo nuova con colonne cantieri + colonna data
     tablePlanHead.innerHTML = '<th>Data</th>';
     cantieri.forEach(c => {
-      tablePlanHead.innerHTML += `<th>${c.nome}</th>`;
+      const th = document.createElement('th');
+      th.textContent = c.nome;
+      tablePlanHead.appendChild(th);
     });
 
-    // Corpo tabella
+    // Preparo righe raggruppate per data (e settimana)
+    // Ricavo tutte le date pianificate
+    const datesSet = new Set(piani.map(p => p.d));
+    const dates = Array.from(datesSet).sort();
+
     tablePlanBody.innerHTML = '';
-    dates.forEach(data => {
+
+    dates.forEach(d => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="date-cell">${data}</td>`;
+      const tdData = document.createElement('td');
+      tdData.textContent = d;
+      tr.appendChild(tdData);
+
+      // Per ogni cantiere cerco la pianificazione in data
       cantieri.forEach(c => {
-        // Trova piani per questa data e cantiere
-        const pianiFiltered = piani.filter(p => p.d === data && p.c === c.nome);
-        if(pianiFiltered.length === 0) {
-          tr.innerHTML += '<td></td>';
-        } else {
-          // Costruiamo lista dipendenti con nomi
-          let list = '';
-          pianiFiltered.forEach(p => {
-            p.p.forEach(pid => {
-              const pers = persone.find(pe => pe.id === pid);
-              if(pers) list += pers.n + ' ' + pers.c + '<br>';
-            });
-          });
-          tr.innerHTML += `<td>${list}</td>`;
+        const td = document.createElement('td');
+        td.style.maxWidth = '150px';
+        // Trovo pianificazione con data=d e cantiere=c.nome
+        const piano = piani.find(pl => pl.d === d && pl.c === c.nome);
+        if(piano) {
+          // Trovo nomi persone
+          const nomiPersone = piano.p.map(idp => {
+            const pers = persone.find(p => p.id === idp);
+            return pers ? pers.n + ' ' + pers.c : '(non trovato)';
+          }).join(', ');
+
+          td.innerHTML = `
+            <div><strong>${nomiPersone}</strong></div>
+            <div>${piano.note || ''}</div>
+            <button class="btn-delete" data-id="${piano.id}" style="margin-top:5px;">Cancella</button>
+          `;
+
+          td.querySelector('button').onclick = async () => {
+            if(confirm('Cancellare questa pianificazione?')) {
+              try {
+                await db.collection('piani').doc(piano.id).delete();
+                await caricaDati();
+              } catch(e) {
+                alert('Errore cancellazione: ' + e.message);
+              }
+            }
+          };
         }
+        tr.appendChild(td);
       });
+
       tablePlanBody.appendChild(tr);
     });
-
-    // Aggiungi click per cancellare pianificazione
-    tablePlanBody.querySelectorAll('td.date-cell').forEach(td => {
-      td.style.cursor = 'pointer';
-      td.title = 'Clicca per cancellare tutte le pianificazioni di questa data';
-      td.onclick = async () => {
-        if(confirm(`Sei sicuro di cancellare tutte le pianificazioni del giorno ${td.textContent}?`)) {
-          const pianiDelGiorno = piani.filter(p => p.d === td.textContent);
-          for(const p of pianiDelGiorno) {
-            await cancellaPianificazione(p.id);
-          }
-        }
-      };
-    });
   }
 
-  // Render annuale (versione base)
-  const numWeekSelect = document.getElementById('numWeekSelect');
-  const yearSelect = document.getElementById('yearSelect');
-  const tableAnnual = document.getElementById('tableAnnual');
-  const tableAnnualBody = tableAnnual.querySelector('tbody');
-  const tableAnnualHead = tableAnnual.querySelector('thead tr');
+  // --- ANNUALE ---
 
   function renderAnnual() {
-    const year = parseInt(yearSelect.value, 10);
-    const week = parseInt(numWeekSelect.value, 10);
+    const weekNum = Number(numWeekSelect.value);
+    const yearNum = Number(yearSelect.value);
+    if(isNaN(weekNum) || isNaN(yearNum)) return;
 
-    // Calcola le date della settimana
-    const dates = [];
-    const simpleDate = new Date(year,0,1);
-    // Correzione per primo giorno settimana (lunedì)
-    let day = simpleDate.getDay();
-    const offset = day <= 4 ? day - 1 : day - 8;
-    let monday = new Date(simpleDate.getTime() - offset*86400000 + (week-1)*7*86400000);
-
-    for(let i=0; i<7; i++) {
-      const d = new Date(monday.getTime() + i*86400000);
-      dates.push(d.toISOString().slice(0,10));
-    }
-
-    // Intestazione con date
+    // Pulisco intestazione e corpo
     tableAnnualHead.innerHTML = '<th>Data</th>';
     cantieri.forEach(c => {
-      tableAnnualHead.innerHTML += `<th>${c.nome}</th>`;
+      const th = document.createElement('th');
+      th.textContent = c.nome;
+      tableAnnualHead.appendChild(th);
     });
-
-    // Corpo tabella
     tableAnnualBody.innerHTML = '';
-    dates.forEach(data => {
+
+    // Creo 7 righe per la settimana
+    for(let i=1; i<=7; i++) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${data}</td>`;
+      const dt = getDateFromWeek(yearNum, weekNum, i);
+      const strDate = formatDate(dt);
+      const tdData = document.createElement('td');
+      tdData.textContent = strDate + ' (' + dt.toLocaleDateString('it-IT', {weekday: 'short'}) + ')';
+      tr.appendChild(tdData);
+
       cantieri.forEach(c => {
-        const pianiFiltered = piani.filter(p => p.d === data && p.c === c.nome);
-        if(pianiFiltered.length === 0) {
-          tr.innerHTML += '<td></td>';
-        } else {
-          let list = '';
-          pianiFiltered.forEach(p => {
-            p.p.forEach(pid => {
-              const pers = persone.find(pe => pe.id === pid);
-              if(pers) list += pers.n + ' ' + pers.c + '<br>';
-            });
-          });
-          tr.innerHTML += `<td>${list}</td>`;
+        const td = document.createElement('td');
+        td.style.maxWidth = '150px';
+        // Trovo eventuale pianificazione in data cantiere
+        const piano = piani.find(pl => pl.d === strDate && pl.c === c.nome);
+        if(piano) {
+          const nomiPersone = piano.p.map(idp => {
+            const pers = persone.find(p => p.id === idp);
+            return pers ? pers.n + ' ' + pers.c : '(non trovato)';
+          }).join(', ');
+
+          td.innerHTML = `
+            <div><strong>${nomiPersone}</strong></div>
+            <div>${piano.note || ''}</div>
+          `;
         }
+        tr.appendChild(td);
       });
+
       tableAnnualBody.appendChild(tr);
-    });
+    }
   }
 
-  numWeekSelect.addEventListener('input', renderAnnual);
-  yearSelect.addEventListener('input', renderAnnual);
+  numWeekSelect.oninput = renderAnnual;
+  yearSelect.oninput = renderAnnual;
 
-  // Tabs gestione
+  // --- EXPORT ---
+  btnExportSettimana.onclick = () => {
+    if(tablePlanBody.rows.length === 0) return alert('Nessuna pianificazione da esportare.');
+    let csv = 'Data;';
+    cantieri.forEach(c => { csv += `"${c.nome}";`; });
+    csv += '\n';
+
+    for(let row of tablePlanBody.rows) {
+      let line = row.cells[0].textContent + ';';
+      for(let i=1; i<row.cells.length; i++) {
+        // Sostituisco ; per evitare problemi csv
+        let txt = row.cells[i].textContent.replace(/;/g, ',');
+        line += `"${txt}";`;
+      }
+      csv += line + '\n';
+    }
+    scaricaCSV(csv, `pianificazione_settimana_${new Date().toISOString().slice(0,10)}.csv`);
+  };
+
+  btnExportAnnual.onclick = () => {
+    if(tableAnnualBody.rows.length === 0) return alert('Nessuna pianificazione da esportare.');
+    let csv = 'Data;';
+    cantieri.forEach(c => { csv += `"${c.nome}";`; });
+    csv += '\n';
+
+    for(let row of tableAnnualBody.rows) {
+      let line = row.cells[0].textContent + ';';
+      for(let i=1; i<row.cells.length; i++) {
+        let txt = row.cells[i].textContent.replace(/;/g, ',');
+        line += `"${txt}";`;
+      }
+      csv += line + '\n';
+    }
+    scaricaCSV(csv, `pianificazione_annual_settimana_${numWeekSelect.value}_anno_${yearSelect.value}.csv`);
+  };
+
+  function scaricaCSV(csv, filename) {
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // --- Gestione tabs ---
   tabs.forEach(tab => {
     tab.onclick = () => {
       tabs.forEach(t => t.classList.remove('active'));
@@ -605,12 +666,8 @@
     };
   });
 
-  // Inizializzazione
+  // --- Inizializzazione ---
   caricaDati();
-
-  // Quando si cambia filtro aggiorna le liste
-  filterCantieri.addEventListener('input', renderCant);
-  filterPersone.addEventListener('input', renderPers);
 
 })();
 </script>
