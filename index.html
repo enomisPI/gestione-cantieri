@@ -3,41 +3,40 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Gestione Cantieri e Personale - con Firebase</title>
+<title>Gestione Cantieri e Personale</title>
 <style>
-  body { font-family: Arial,sans-serif; background:#f9f9f9; margin:20px; }
-  h1,h2 { color:#2c3e50; }
+  body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 20px; }
+  h1,h2 { color: #2c3e50; }
   .container { max-width: 1100px; margin: auto; }
-  .tabs { display: flex; gap:10px; margin-bottom: 20px; }
-  .tab { background:#34495e; color:#fff; padding:10px 20px; border-radius: 4px 4px 0 0; cursor: pointer; user-select:none; }
-  .tab.active { background:#2c3e50; font-weight:bold; }
-  .content { background:#fff; padding:20px; border-radius: 0 4px 4px 4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); display:none; overflow-x:auto; }
-  .content.active { display:block; }
-  label { font-weight:bold; margin-top:10px; display:block; }
-  input, select, textarea { width: 100%; padding:6px; margin-top:4px; box-sizing: border-box; }
+  .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+  .tab { background: #34495e; color: #fff; padding: 10px 20px; border-radius: 4px 4px 0 0; cursor: pointer; }
+  .tab.active { background: #2c3e50; font-weight: bold; }
+  .content { background: #fff; padding: 20px; border-radius: 0 4px 4px 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; }
+  .content.active { display: block; }
+  label { font-weight: bold; margin-top: 10px; display: block; }
+  input, select, textarea { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; }
   textarea { resize: vertical; }
   select[multiple] { height: 130px; }
-  button { margin-top: 10px; padding: 6px 14px; border:none; background:#3498db; color:#fff; border-radius:4px; cursor:pointer; }
-  button:hover { background:#2980b9; }
+  button { margin-top: 10px; padding: 6px 14px; border: none; background: #3498db; color: #fff; border-radius: 4px; cursor: pointer; }
+  button:hover { background: #2980b9; }
   table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; vertical-align: top; word-wrap: break-word; }
-  th { background:#34495e; color:#fff; }
-  .btn-edit, .btn-delete { border:none; padding:5px 10px; border-radius:3px; color:#fff; cursor:pointer; }
-  .btn-edit { background:#3498db; margin-right:5px; }
-  .btn-delete { background:#e74c3c; }
-  .btn-edit:hover { background:#2980b9; }
-  .btn-delete:hover { background:#c0392b; }
+  th, td { border: 1px solid #ccc; padding: 8px; vertical-align: top; word-wrap: break-word; }
+  th { background: #34495e; color: #fff; }
+  /* Sezione Pianificazione: cella intervento */
+  .intervento-cell { display: flex; justify-content: space-between; align-items: center; }
+  .intervento-nome { flex: 1; margin-right: 10px; }
+  .intervento-actions button { margin-left: 4px; }
+  .btn-edit { background: #f39c12; }
+  .btn-edit:hover { background: #d35400; }
+  .btn-delete { background: #e74c3c; }
+  .btn-delete:hover { background: #c0392b; }
   @media (max-width: 700px) { .tabs { flex-wrap: wrap; } }
-  /* Filtri di ricerca */
-  #filterCantieri, #filterPersone {
-    padding: 6px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px;
-  }
+  #filterPersone { margin-bottom: 10px; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-
 <div class="container">
   <h1>Gestione Cantieri e Personale</h1>
   <div class="tabs">
@@ -50,67 +49,67 @@
   <!-- Cantieri -->
   <div id="cantieri" class="content active">
     <h2>Cantieri</h2>
-    <label for="nomeCantiere">Nome cantiere</label>
-    <input id="nomeCantiere" placeholder="Inserisci nome cantiere" maxlength="50" />
+    <label>Nome cantiere</label>
+    <input id="nomeCantiere" maxlength="50"/>
     <button id="btnSaveCant">Salva</button>
-    <label for="filterCantieri">Filtra cantieri</label>
-    <input id="filterCantieri" placeholder="Cerca cantiere..." />
-    <table id="tableCantieri"><thead><tr><th>Nome</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+    <label>Filtra cantieri</label>
+    <input id="filterCantieri" placeholder="Cerca..."/>
+    <table>
+      <thead><tr><th>Nome</th><th>Azioni</th></tr></thead>
+      <tbody id="tableCantieri"></tbody>
+    </table>
   </div>
 
   <!-- Personale -->
   <div id="personale" class="content">
     <h2>Personale</h2>
-    <label for="nomePersona">Nome</label>
-    <input id="nomePersona" placeholder="Nome" maxlength="30" />
-    <label for="cognomePersona">Cognome</label>
-    <input id="cognomePersona" placeholder="Cognome" maxlength="30" />
-    <label for="mansionePersona">Mansione</label>
-    <input id="mansionePersona" placeholder="Mansione" maxlength="50" />
-    <label for="notePersona">Note</label>
-    <textarea id="notePersona" rows="2" placeholder="Note (opzionale)"></textarea>
+    <label>Nome</label><input id="nomePersona" maxlength="30"/>
+    <label>Cognome</label><input id="cognomePersona" maxlength="30"/>
+    <label>Mansione</label><input id="mansionePersona" maxlength="50"/>
+    <label>Note</label><textarea id="notePersona" rows="2"></textarea>
     <button id="btnSavePers">Salva</button>
-    <label for="filterPersone">Filtra persone (nome, cognome, mansione)</label>
-    <input id="filterPersone" placeholder="Cerca..." />
-    <div id="infoRevisionePers" style="margin:10px 0;color:#e67e22;font-weight:bold;display:none;"></div>
-    <table id="tablePersonale"><thead><tr><th>Nome</th><th>Cognome</th><th>Mansione</th><th>Note</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+    <label>Filtra persone (nome, cognome, mansione)</label>
+    <input id="filterPersone" placeholder="Cerca..."/>
+    <div id="infoRevisionePers" style="display:none;color:#e67e22;font-weight:bold;margin:6px 0;"></div>
+    <table>
+      <thead><tr><th>Nome</th><th>Cognome</th><th>Mansione</th><th>Note</th><th>Azioni</th></tr></thead>
+      <tbody id="tablePersonale"></tbody>
+    </table>
   </div>
 
   <!-- Pianificazione -->
   <div id="pianificazione" class="content">
     <h2>Pianificazione</h2>
-    <label for="dataPlan">Seleziona data</label>
-    <input type="date" id="dataPlan" />
-    <div id="dataPlanConGiorno" style="margin-top:6px;font-weight:bold;"></div>
+    <label>Seleziona data</label>
+    <input type="date" id="dataPlan"/>
+    <div id="dataPlanConGiorno" style="margin:6px 0;font-weight:bold;"></div>
 
-    <label for="selectCantiere">Cantiere</label>
-    <select id="selectCantiere">
+    <label>Seleziona cantiere</label>
+    <select id="selectCant">
       <option value="">--- Seleziona cantiere ---</option>
     </select>
 
-    <label for="selectPers">Dipendenti (seleziona uno o più)</label>
-    <select id="selectPers" multiple></select>
-
+    <label>Dipendenti (seleziona più)</label>
+    <select id="selectPers" multiple disabled></select>
     <button id="btnAddPlan">Assegna</button>
-    <label for="notePlan">Note</label>
+
+    <label>Note intervento</label>
     <textarea id="notePlan" rows="2"></textarea>
 
-    <table id="tablePlan" style="margin-top:20px;">
-      <thead><tr id="tablePlanHeader"><th>Giorno/Data</th></tr></thead>
-      <tbody id="tablePlanBody"></tbody>
+    <table>
+      <thead><tr id="planHeader"><th>Giorno/Data</th></tr></thead>
+      <tbody id="planBody"></tbody>
     </table>
   </div>
 
   <!-- Anteprima Annuale -->
   <div id="annuale" class="content">
     <h2>Anteprima Annuale</h2>
-    <label for="numWeekSelect">Settimana #</label>
-    <input type="number" id="numWeekSelect" min="1" max="54" value="1" />
-    <label for="yearSelect">Anno</label>
-    <input type="number" id="yearSelect" min="2000" max="2100" value="2025" />
-    <table id="tableAnnual" style="margin-top:15px;">
+    <label>Settimana #</label><input type="number" id="numWeek" min="1" max="54" value="1"/>
+    <label>Anno</label><input type="number" id="year" min="2000" max="2100" value="2025"/>
+    <table>
       <thead><tr><th>Data</th></tr></thead>
-      <tbody></tbody>
+      <tbody id="annualBody"></tbody>
     </table>
   </div>
 </div>
@@ -118,7 +117,7 @@
 <script>
 (() => {
   // Firebase
-  const firebaseConfig = {
+  const cfg = {
     apiKey: "AIzaSyCuuDAmZeR0TV7FZHt8uK4LQRrfCyGMtNA",
     authDomain: "gestione-cantieri-5c820.firebaseapp.com",
     projectId: "gestione-cantieri-5c820",
@@ -127,287 +126,299 @@
     appId: "1:591449856782:web:e7c218671fc488ea19d55f",
     measurementId: "G-7NFGJPEFWL"
   };
-  firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(cfg);
   const db = firebase.firestore();
 
-  // Dati
-  let cantieri = [], persone = [], piani = [];
-  let editingCantId=null, editingPersId=null, editingPlanId=null;
+  // State
+  let cantieri=[], persone=[], piani=[];
+  let editingCant=null, editingPers=null, editingPlan=null;
 
-  // Elementi
-  const tabs=document.querySelectorAll('.tab'), contents=document.querySelectorAll('.content');
-  const inputCant=document.getElementById('nomeCantiere'), btnSaveCant=document.getElementById('btnSaveCant');
-  const filterCantieri=document.getElementById('filterCantieri'), tableCant=document.querySelector('#tableCantieri tbody');
+  // DOM
+  const tabs=document.querySelectorAll('.tab'),
+        conts=document.querySelectorAll('.content'),
+        inpCant=document.getElementById('nomeCantiere'),
+        btnSaveCant=document.getElementById('btnSaveCant'),
+        filtCant=document.getElementById('filterCantieri'),
+        tblCant=document.getElementById('tableCantieri'),
 
-  const inputNome=document.getElementById('nomePersona'), inputCog=document.getElementById('cognomePersona');
-  const inputMan=document.getElementById('mansionePersona'), inputNote=document.getElementById('notePersona');
-  const btnSavePers=document.getElementById('btnSavePers'), filterPers=document.getElementById('filterPersone');
-  const infoRevPers=document.getElementById('infoRevisionePers'), tablePers=document.querySelector('#tablePersonale tbody');
+        inpN=document.getElementById('nomePersona'),
+        inpC=document.getElementById('cognomePersona'),
+        inpM=document.getElementById('mansionePersona'),
+        inpNoteP=document.getElementById('notePersona'),
+        btnSaveP=document.getElementById('btnSavePers'),
+        filtP=document.getElementById('filterPersone'),
+        infoRev=document.getElementById('infoRevisionePers'),
+        tblPers=document.getElementById('tablePersonale'),
 
-  const dataPlan=document.getElementById('dataPlan'), dataPlanInfo=document.getElementById('dataPlanConGiorno');
-  const selectCant=document.getElementById('selectCantiere'), selectPers=document.getElementById('selectPers');
-  const notePlan=document.getElementById('notePlan'), btnAddPlan=document.getElementById('btnAddPlan');
-  const tablePlanHead=document.getElementById('tablePlanHeader'), tablePlanBody=document.getElementById('tablePlanBody');
+        inpDate=document.getElementById('dataPlan'),
+        infoDate=document.getElementById('dataPlanConGiorno'),
+        selCant=document.getElementById('selectCant'),
+        selPers=document.getElementById('selectPers'),
+        btnAdd=document.getElementById('btnAddPlan'),
+        noteIv=document.getElementById('notePlan'),
+        hdr=document.getElementById('planHeader'),
+        bd=document.getElementById('planBody'),
 
-  // Utili
-  function switchTab(id){
-    tabs.forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
-    contents.forEach(c=>c.classList.toggle('active',c.id===id));
-  }
-  tabs.forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+        numW=document.getElementById('numWeek'),
+        yearI=document.getElementById('year'),
+        annualBody=document.getElementById('annualBody');
 
-  const giorniSet=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
-  function formatFull(d){
-    const gg=('0'+d.getDate()).slice(-2), mm=('0'+(d.getMonth()+1)).slice(-2), yyyy=d.getFullYear();
-    return `${gg}/${mm}/${yyyy} ${giorniSet[d.getDay()]}`;
+  // Tab switch
+  tabs.forEach(t=>t.onclick=()=> {
+    tabs.forEach(x=>x.classList.remove('active'));
+    conts.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+  });
+
+  // Utils
+  const giorni=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+  function fmtFull(d){
+    const gg=('0'+d.getDate()).slice(-2),
+          mm=('0'+(d.getMonth()+1)).slice(-2),
+          aa=d.getFullYear();
+    return `${gg}/${mm}/${aa} ${giorni[d.getDay()]}`;
   }
   function iso(d){return d.toISOString().slice(0,10);}
   function getMonday(d){
-    d=new Date(d); const day=d.getDay(), diff=(day===0? -6:1)-day; d.setDate(d.getDate()+diff); return d;
+    d=new Date(d);
+    const day=d.getDay(), diff=(day===0? -6 : 1)-day;
+    d.setDate(d.getDate()+diff);
+    return d;
   }
-  function weekDates(base){
-    const m=getMonday(base), arr=[];
-    for(let i=0;i<7;i++){const dd=new Date(m);dd.setDate(m.getDate()+i);arr.push(dd);}
-    return arr;
+  function weekDates(d){
+    const m=getMonday(d);
+    return Array.from({length:7},(_,i)=>{const dd=new Date(m); dd.setDate(m.getDate()+i);return dd;});
   }
 
-  // Caricamento dati
-  async function carica(){
-    const cSnap=await db.collection('cantieri').get();
-    cantieri=cSnap.docs.map(d=>({id:d.id,nome:d.data().nome}));
+  // Load
+  async function loadAll(){
+    const cS=await db.collection('cantieri').get();
+    cantieri=cS.docs.map(d=>({id:d.id,nome:d.data().nome}));
     renderCant(); popolaCant();
 
-    const pSnap=await db.collection('persone').get();
-    persone=pSnap.docs.map(d=>({id:d.id,...d.data()}));
-    renderPers(); aggiornaSelectPers();
+    const pS=await db.collection('persone').get();
+    persone=pS.docs.map(d=>({id:d.id,...d.data()}));
+    renderPers(); // don't update selPers here
 
-    const planSnap=await db.collection('piani').get();
-    piani=planSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const ivS=await db.collection('piani').get();
+    piani=ivS.docs.map(d=>({id:d.id,...d.data()}));
     renderPlan();
   }
 
   // Cantieri
-  function renderCant(){
-    const f=filterCantieri.value.toLowerCase();
-    tableCant.innerHTML='';
+  filtCant.oninput=renderCant;
+  async function renderCant(){
+    const f=filtCant.value.toLowerCase();
+    tblCant.innerHTML='';
     cantieri.filter(c=>c.nome.toLowerCase().includes(f)).forEach(c=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`
-        <td>${c.nome}</td>
+      tr.innerHTML=`<td>${c.nome}</td>
         <td>
           <button class="btn-edit" data-id="${c.id}" data-nome="${c.nome}">Modifica</button>
           <button class="btn-delete" data-id="${c.id}">Cancella</button>
         </td>`;
-      tableCant.appendChild(tr);
+      tblCant.append(tr);
     });
-    tableCant.querySelectorAll('.btn-delete').forEach(btn=>{
-      btn.onclick=async()=>{
-        if(!confirm('Confermi cancellazione?')) return;
-        await db.collection('cantieri').doc(btn.dataset.id).delete();
-        const c=cantieri.find(x=>x.id===btn.dataset.id);
+    tblCant.querySelectorAll('.btn-delete').forEach(b=>{
+      b.onclick=async()=>{
+        if(!confirm('Confermi cancellazione cantiere?')) return;
+        await db.collection('cantieri').doc(b.dataset.id).delete();
+        // cancella piani
+        const c=cantieri.find(x=>x.id===b.dataset.id);
         if(c){
           const snap=await db.collection('piani').where('c','==',c.nome).get();
           for(const d of snap.docs) await d.ref.delete();
         }
-        carica();
+        await loadAll();
       };
     });
-    tableCant.querySelectorAll('.btn-edit').forEach(btn=>{
-      btn.onclick=()=>{
-        editingCantId=btn.dataset.id;
-        inputCant.value=btn.dataset.nome;
+    tblCant.querySelectorAll('.btn-edit').forEach(b=>{
+      b.onclick=()=>{
+        editingCant=b.dataset.id;
+        inpCant.value=b.dataset.nome;
         btnSaveCant.textContent='Aggiorna';
         switchTab('cantieri');
       };
     });
   }
-  filterCantieri.oninput=renderCant;
   btnSaveCant.onclick=async()=>{
-    const v=inputCant.value.trim();
-    if(!v) return alert('Inserisci nome');
-    if(editingCantId){
-      if(cantieri.some(c=>c.nome.toLowerCase()===v.toLowerCase()&&c.id!==editingCantId)) return alert('Duplicato');
-      await db.collection('cantieri').doc(editingCantId).update({nome:v});
+    const v=inpCant.value.trim(); if(!v) return alert('Nome obbligatorio');
+    if(editingCant){
+      if(cantieri.some(c=>c.nome.toLowerCase()===v.toLowerCase()&&c.id!==editingCant)) return alert('Dup');
+      await db.collection('cantieri').doc(editingCant).update({nome:v});
     } else {
-      if(cantieri.some(c=>c.nome.toLowerCase()===v.toLowerCase())) return alert('Duplicato');
+      if(cantieri.some(c=>c.nome.toLowerCase()===v.toLowerCase())) return alert('Dup');
       await db.collection('cantieri').add({nome:v});
     }
-    editingCantId=null; btnSaveCant.textContent='Salva'; inputCant.value='';
-    carica();
+    editingCant=null; btnSaveCant.textContent='Salva'; inpCant.value='';
+    loadAll();
   };
 
   // Personale
+  filtP.oninput=renderPers;
   function renderPers(){
-    const f=filterPers.value.toLowerCase();
-    tablePers.innerHTML='';
+    const f=filtP.value.toLowerCase();
+    tblPers.innerHTML='';
     persone.filter(p=>{
-      const full=(p.n+' '+p.c).toLowerCase(), mans=(p.m||'').toLowerCase();
+      const full=(p.n+' '+p.c).toLowerCase(),
+            mans=(p.m||'').toLowerCase();
       return full.includes(f)||p.c.toLowerCase().includes(f)||mans.includes(f);
     }).forEach(p=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`
-        <td>${p.n}</td><td>${p.c}</td><td>${p.m}</td><td>${p.note||''}</td>
+      tr.innerHTML=`<td>${p.n}</td><td>${p.c}</td><td>${p.m}</td><td>${p.note||''}</td>
         <td>
           <button class="btn-edit" data-id="${p.id}" data-n="${p.n}" data-c="${p.c}" data-m="${p.m||''}" data-note="${p.note||''}">Modifica</button>
           <button class="btn-delete" data-id="${p.id}">Cancella</button>
         </td>`;
-      tablePers.appendChild(tr);
+      tblPers.append(tr);
     });
-    tablePers.querySelectorAll('.btn-delete').forEach(btn=>{
-      btn.onclick=async()=>{
+    tblPers.querySelectorAll('.btn-delete').forEach(b=>{
+      b.onclick=async()=>{
         if(!confirm('Confermi cancellazione persona?')) return;
-        await db.collection('persone').doc(btn.dataset.id).delete();
-        const snap=await db.collection('piani').where('idPersona','==',btn.dataset.id).get();
+        await db.collection('persone').doc(b.dataset.id).delete();
+        const snap=await db.collection('piani').where('idPersona','==',b.dataset.id).get();
         for(const d of snap.docs) await d.ref.delete();
-        carica();
+        loadAll();
       };
     });
-    tablePers.querySelectorAll('.btn-edit').forEach(btn=>{
-      btn.onclick=()=>{
-        editingPersId=btn.dataset.id;
-        inputNome.value=btn.dataset.n; inputCog.value=btn.dataset.c;
-        inputMan.value=btn.dataset.m; inputNote.value=btn.dataset.note;
-        btnSavePers.textContent='Aggiorna';
-        infoRevPers.style.display='block';
-        infoRevPers.textContent=`Modifica persona: ${btn.dataset.n} ${btn.dataset.c}`;
+    tblPers.querySelectorAll('.btn-edit').forEach(b=>{
+      b.onclick=()=>{
+        editingPers=b.dataset.id;
+        inpN.value=b.dataset.n; inpC.value=b.dataset.c;
+        inpM.value=b.dataset.m; inpNoteP.value=b.dataset.note;
+        btnSaveP.textContent='Aggiorna';
+        infoRev.style.display='block';
+        infoRev.textContent=`Modifica: ${b.dataset.n} ${b.dataset.c}`;
         switchTab('personale');
       };
     });
   }
-  filterPers.oninput=renderPers;
-  btnSavePers.onclick=async()=>{
-    const n=inputNome.value.trim(), c=inputCog.value.trim(), m=inputMan.value.trim(), nt=inputNote.value.trim();
-    if(!n||!c) return alert('Nome e cognome obbligatori');
-    if(editingPersId){
-      if(persone.some(p=>p.n.toLowerCase()===n.toLowerCase()&&p.c.toLowerCase()===c.toLowerCase()&&p.id!==editingPersId)) return alert('Duplicato');
-      await db.collection('persone').doc(editingPersId).update({n,c,m,note:nt});
+  btnSaveP.onclick=async()=>{
+    const n=inpN.value.trim(), c=inpC.value.trim(), m=inpM.value.trim(), nt=inpNoteP.value.trim();
+    if(!n||!c) return alert('Nome e Cognome obbligatori');
+    if(editingPers){
+      if(persone.some(p=>p.n.toLowerCase()===n.toLowerCase()&&p.c.toLowerCase()===c.toLowerCase()&&p.id!==editingPers))
+        return alert('Dup');
+      await db.collection('persone').doc(editingPers).update({n,c,m,note:nt});
     } else {
-      if(persone.some(p=>p.n.toLowerCase()===n.toLowerCase()&&p.c.toLowerCase()===c.toLowerCase())) return alert('Duplicato');
+      if(persone.some(p=>p.n.toLowerCase()===n.toLowerCase()&&p.c.toLowerCase()===c.toLowerCase()))
+        return alert('Dup');
       await db.collection('persone').add({n,c,m,note:nt});
     }
-    editingPersId=null; btnSavePers.textContent='Salva';
-    infoRevPers.style.display='none'; infoRevPers.textContent='';
-    inputNome.value=''; inputCog.value=''; inputMan.value=''; inputNote.value='';
-    carica();
+    editingPers=null; btnSaveP.textContent='Salva';
+    infoRev.style.display='none'; infoRev.textContent='';
+    inpN.value=''; inpC.value=''; inpM.value=''; inpNoteP.value='';
+    loadAll();
   };
 
   // Pianificazione
-  function popolaCant(){
-    selectCant.innerHTML=`<option value="">--- Seleziona cantiere ---</option>`;
-    cantieri.forEach(c=>{
-      const o=new Option(c.nome,c.nome);
-      selectCant.append(o);
-    });
+  function popolaCantieri(){
+    selCant.innerHTML=`<option value="">--- Seleziona cantiere ---</option>`;
+    cantieri.forEach(c=>selCant.append(new Option(c.nome,c.nome)));
   }
   function aggiornaSelectPers(){
-    selectPers.innerHTML='';
-    const d=dataPlan.value;
-    if(!d){ selectPers.disabled=true; return; }
-    selectPers.disabled=false;
-    // trova tutti i dipendenti già assegnati quel giorno (tutti cantieri)
-    const es=new Set(piani.filter(p=>p.data===d).map(p=>p.idPersona));
-    persone.filter(p=>!es.has(p.id)).forEach(p=>{
-      const o=new Option(`${p.n} ${p.c}`,p.id);
-      selectPers.append(o);
-    });
+    selPers.innerHTML='';
+    selPers.disabled = !inpDate.value;
+    if(!inpDate.value) return;
+    const assegnati = new Set(piani.filter(p=>p.data===inpDate.value).map(p=>p.idPersona));
+    persone.filter(p=>!assegnati.has(p.id))
+            .forEach(p=> selPers.append(new Option(`${p.n} ${p.c}`,p.id)));
   }
   function aggiornaDataInfo(){
-    if(!dataPlan.value){ dataPlanInfo.textContent=''; return; }
-    dataPlanInfo.textContent=formatFull(new Date(dataPlan.value+'T00:00:00'));
+    infoDate.textContent = inpDate.value? fmtFull(new Date(inpDate.value+'T00:00:00')) : '';
   }
-  dataPlan.onchange=()=>{
-    aggiornaDataInfo(); aggiornaSelectPers(); renderPlan();
+  inpDate.onchange=()=>{
+    aggiornaDataInfo();
+    // non aggiornare la lista qui
+    renderPlan();
   };
-  selectCant.onchange=renderPlan;
+  // solo assign e delete aggiornano la lista
+  btnAdd.onclick=async()=>{
+    if(!inpDate.value||!selCant.value) return alert('Data e cantiere obbligatori');
+    const note=noteIv.value.trim(), sel=Array.from(selPers.selectedOptions).map(o=>o.value);
+    if(editingPlan){
+      if(sel.length!==1) return alert('Modifica richiede un solo dipendente');
+      await db.collection('piani').doc(editingPlan).update({
+        data: inpDate.value, c: selCant.value, idPersona: sel[0], note
+      });
+    } else {
+      for(const id of sel){
+        if(!piani.find(p=>p.data===inpDate.value&&p.c===selCant.value&&p.idPersona===id))
+          await db.collection('piani').add({
+            data: inpDate.value, c: selCant.value, idPersona: id, note
+          });
+      }
+    }
+    editingPlan=null; btnAdd.textContent='Assegna';
+    noteIv.value='';
+    await loadAll();
+    aggiornaSelectPers();
+  };
 
   async function renderPlan(){
-    if(!dataPlan.value){
-      tablePlanHead.querySelectorAll('th:not(:first-child)').forEach(th=>th.remove());
-      tablePlanBody.innerHTML=''; return;
-    }
-    const base=new Date(dataPlan.value+'T00:00:00');
-    const sett=weekDates(base);
-    const keys=sett.map(d=>iso(d));
-
-    // colonne cantieri usati in settimana
-    const cantUsati=new Set(piani.filter(p=>keys.includes(p.data)).map(p=>p.c));
-    // ricostruisci header
-    tablePlanHead.querySelectorAll('th:not(:first-child)').forEach(th=>th.remove());
-    Array.from(cantUsati).sort().forEach(nome=>{
-      const th=document.createElement('th'); th.textContent=nome;
-      tablePlanHead.append(th);
+    // header
+    hdr.querySelectorAll('th:not(:first-child)').forEach(th=>th.remove());
+    if(!inpDate.value) { bd.innerHTML=''; return; }
+    // calcola settimana
+    const sett=weekDates(new Date(inpDate.value+'T00:00:00'));
+    // colonne c usate
+    const chiave=sett.map(d=>iso(d));
+    const usati=new Set(piani.filter(p=>chiave.includes(p.data)).map(p=>p.c));
+    Array.from(usati).sort().forEach(c=>{
+      const th=document.createElement('th'); th.textContent=c;
+      hdr.append(th);
     });
-
     // righe
-    tablePlanBody.innerHTML='';
+    bd.innerHTML='';
     sett.forEach(d=>{
-      const row=document.createElement('tr');
-      const td0=document.createElement('td'); td0.textContent=formatFull(d);
-      row.append(td0);
-      Array.from(cantUsati).sort().forEach(c=>{
+      const tr=document.createElement('tr');
+      const td0=document.createElement('td'); td0.textContent=fmtFull(d);
+      tr.append(td0);
+      Array.from(usati).sort().forEach(c=>{
         const td=document.createElement('td');
-        const giornoKey=iso(d);
-        const interventi=piani.filter(p=>p.data===giornoKey&&p.c===c);
-        if(interventi.length===0){
-          td.textContent='-';
-        } else {
-          interventi.forEach(iv=>{
-            const pers=persone.find(x=>x.id===iv.idPersona);
-            const nomePers=pers?`${pers.n} ${pers.c}`:'(sconosciuto)';
-            const div=document.createElement('div'); div.style.marginBottom='4px';
-            div.innerHTML=`<strong>${nomePers}</strong>${iv.note? ' - '+iv.note : ''}`;
-            // Modifica
-            const be=document.createElement('button');
-            be.textContent='Modifica'; be.className='btn-edit'; be.style.marginRight='6px';
-            be.onclick=()=>{
-              editingPlanId=iv.id;
-              dataPlan.value=iv.data; aggiornaDataInfo();
-              selectCant.value=iv.c; aggiornaSelectPers();
-              // popola selectPers solo con questo dipendente
-              selectPers.innerHTML='';
-              const op=new Option(nomePers,iv.idPersona,true,true);
-              selectPers.append(op);
-              notePlan.value=iv.note||'';
-              btnAddPlan.textContent='Aggiorna';
+        const key=iso(d);
+        const ivs=piani.filter(p=>p.data===key&&p.c===c);
+        if(ivs.length===0){ td.textContent='-'; }
+        else {
+          ivs.forEach(iv=>{
+            const pers=persone.find(p=>p.id===iv.idPersona),
+                  nome=pers?`${pers.n} ${pers.c}`:'(sconosciuto)';
+            const div=document.createElement('div'); div.className='intervento-cell';
+            const span=document.createElement('span'); span.className='intervento-nome';
+            span.textContent=nome + (iv.note? ' – '+iv.note : '');
+            const act=document.createElement('div'); act.className='intervento-actions';
+            const eb=document.createElement('button'); eb.textContent='Modifica'; eb.className='btn-edit';
+            eb.onclick=()=>{
+              editingPlan=iv.id;
+              inpDate.value=iv.data; aggiornaDataInfo();
+              selCant.value=iv.c; popolaCantieri(); aggiornaSelectPers();
+              noteIv.value=iv.note||'';
+              // imposta selectPers con solo lui
+              selPers.innerHTML=''; selPers.append(new Option(nome,iv.idPersona,true,true));
+              btnAdd.textContent='Aggiorna';
               switchTab('pianificazione');
             };
-            const bd=document.createElement('button');
-            bd.textContent='Cancella'; bd.className='btn-delete';
-            bd.onclick=async()=>{
-              if(!confirm('Eliminare intervento?')) return;
+            const dbtn=document.createElement('button'); dbtn.textContent='Cancella'; dbtn.className='btn-delete';
+            dbtn.onclick=async()=>{
+              if(!confirm('Cancellare intervento?')) return;
               await db.collection('piani').doc(iv.id).delete();
-              carica();
+              await loadAll();
+              aggiornaSelectPers();
             };
-            div.append(be,bd);
+            act.append(eb, dbtn);
+            div.append(span, act);
             td.append(div);
           });
         }
-        row.append(td);
+        tr.append(td);
       });
-      tablePlanBody.append(row);
+      bd.append(tr);
     });
   }
 
-  btnAddPlan.onclick=async()=>{
-    const d=dataPlan.value, c=selectCant.value;
-    const sel=Array.from(selectPers.selectedOptions).map(o=>o.value);
-    const nt=notePlan.value.trim();
-    if(!d||!c) return alert('Data e cantiere obbligatori');
-    if(editingPlanId){
-      if(sel.length!==1) return alert('Seleziona un solo dipendente');
-      await db.collection('piani').doc(editingPlanId).update({data:d,c:id,c:id,idPersona:sel[0],note:nt});
-      editingPlanId=null; btnAddPlan.textContent='Assegna';
-    } else {
-      for(const idp of sel){
-        const doppio=piani.find(p=>p.data===d&&p.c===c&&p.idPersona===idp);
-        if(!doppio) await db.collection('piani').add({data:d,c,idPersona:idp,note:nt});
-      }
-    }
-    notePlan.value=''; await carica();
-  };
-
-  // Inizializza
-  carica();
+  // init
+  loadAll().then(popolaCant);
 })();
 </script>
 </body>
