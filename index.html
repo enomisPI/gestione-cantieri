@@ -98,12 +98,408 @@
   </div>
 </div>
 <script>
-// Qui andranno le funzioni JavaScript: 
-// - caricamento Firebase Firestore
-// - gestione eventi CRUD
-// - filtri di ricerca
-// - aggiornamento dinamico nominativi
-// - nascondere colonne vuote
+(() => {
+  // Config Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyCuuDAmZeR0TV7FZHt8uK4LQRrfCyGMtNA",
+    authDomain: "gestione-cantieri-5c820.firebaseapp.com",
+    projectId: "gestione-cantieri-5c820",
+    storageBucket: "gestione-cantieri-5c820.appspot.com",
+    messagingSenderId: "591449856782",
+    appId: "1:591449856782:web:e7c218671fc488ea19d55f",
+    measurementId: "G-7NFGJPEFWL"
+  };
+
+  // Init Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Dati
+  let cantieri = [];
+  let persone = [];
+  let piani = [];
+
+  // Gestione tabs
+  const tabs = document.querySelectorAll('.tab');
+  const contents = document.querySelectorAll('.content');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab).classList.add('active');
+      if(tab.dataset.tab === 'pianificazione') {
+        populateCantieriSelect();
+        updateDipendentiSelect();
+        renderPianificazione();
+      }
+    });
+  });
+
+  // Utility: icone
+  const iconEdit = '<i class="fas fa-edit"></i>';
+  const iconDelete = '<i class="fas fa-trash-alt"></i>';
+
+  // --- Carica dati da Firestore ---
+  async function caricaDati() {
+    // Cantieri
+    const cantieriSnap = await db.collection('cantieri').get();
+    cantieri = cantieriSnap.docs.map(doc => ({ id: doc.id, nome: doc.data().nome }));
+    renderCantieri();
+    populateCantieriSelect();
+
+    // Persone
+    const personeSnap = await db.collection('persone').get();
+    persone = personeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderPersonale();
+    updateDipendentiSelect();
+
+    // Pianificazione
+    const pianiSnap = await db.collection('piani').get();
+    piani = pianiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderPianificazione();
+  }
+
+  // --- CANTIERI ---
+  const inputNomeCant = document.getElementById('nomeCantiere');
+  const btnSaveCant = document.getElementById('btnSaveCant');
+  const tableCantieriBody = document.querySelector('#tableCantieri tbody');
+  const filterCantieri = document.getElementById('filterCantieri');
+  let editingCantId = null;
+
+  btnSaveCant.onclick = async () => {
+    const nome = inputNomeCant.value.trim();
+    if(!nome) return alert('Inserisci nome cantiere');
+    try {
+      if(editingCantId) {
+        // Modifica
+        await db.collection('cantieri').doc(editingCantId).update({nome});
+        editingCantId = null;
+        btnSaveCant.textContent = 'Salva';
+      } else {
+        // Verifica duplicato
+        if(cantieri.find(c => c.nome.toLowerCase() === nome.toLowerCase())) {
+          return alert('Cantiere già presente');
+        }
+        await db.collection('cantieri').add({nome});
+      }
+      inputNomeCant.value = '';
+      filterCantieri.value = '';
+      await caricaDati();
+    } catch(e) {
+      alert('Errore salvataggio cantiere: ' + e.message);
+    }
+  };
+
+  function renderCantieri() {
+    const filterText = filterCantieri.value.toLowerCase();
+    tableCantieriBody.innerHTML = '';
+    cantieri
+      .filter(c => c.nome.toLowerCase().includes(filterText))
+      .forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${c.nome}</td>
+        <td>
+          <button class="btn-icon edit" data-id="${c.id}" title="Modifica">${iconEdit}</button>
+          <button class="btn-icon delete" data-id="${c.id}" title="Cancella">${iconDelete}</button>
+        </td>`;
+      tableCantieriBody.appendChild(tr);
+    });
+    // Eventi modifica
+    tableCantieriBody.querySelectorAll('button.edit').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        const cantiere = cantieri.find(c => c.id === id);
+        if(!cantiere) return;
+        inputNomeCant.value = cantiere.nome;
+        editingCantId = id;
+        btnSaveCant.textContent = 'Modifica';
+      };
+    });
+    // Eventi cancella
+    tableCantieriBody.querySelectorAll('button.delete').forEach(btn => {
+      btn.onclick = async () => {
+        if(confirm('Sei sicuro di cancellare questo cantiere? (verranno cancellati anche i piani associati)')) {
+          const id = btn.dataset.id;
+          try {
+            // Cancella piani associati
+            const pianiDocs = await db.collection('piani').where('c', '==', cantieri.find(c=>c.id===id).nome).get();
+            const batch = db.batch();
+            pianiDocs.forEach(doc => batch.delete(doc.ref));
+            // Cancella cantiere
+            batch.delete(db.collection('cantieri').doc(id));
+            await batch.commit();
+            await caricaDati();
+          } catch(e) {
+            alert('Errore cancellazione: ' + e.message);
+          }
+        }
+      };
+    });
+  }
+
+  filterCantieri.addEventListener('input', renderCantieri);
+
+  // --- PERSONALE ---
+  const inputNomePers = document.getElementById('nomePersona');
+  const inputCogPers = document.getElementById('cognomePersona');
+  const inputMansione = document.getElementById('mansionePersona');
+  const inputNotePers = document.getElementById('notePersona');
+  const btnSavePers = document.getElementById('btnSavePers');
+  const tablePersonaleBody = document.querySelector('#tablePersonale tbody');
+  const filterPersonale = document.getElementById('filterPersonale');
+  let editingPersId = null;
+
+  btnSavePers.onclick = async () => {
+    const n = inputNomePers.value.trim();
+    const c = inputCogPers.value.trim();
+    const m = inputMansione.value.trim();
+    const note = inputNotePers.value.trim();
+    if(!n || !c) return alert('Inserisci nome e cognome');
+    try {
+      if(editingPersId) {
+        // Modifica persona
+        await db.collection('persone').doc(editingPersId).update({n,c,m,note});
+        editingPersId = null;
+        btnSavePers.textContent = 'Salva';
+      } else {
+        // Controllo duplicati
+        if(persone.find(p => p.n.toLowerCase() === n.toLowerCase() && p.c.toLowerCase() === c.toLowerCase())) {
+          return alert('Persona già presente');
+        }
+        await db.collection('persone').add({n,c,m,note});
+      }
+      inputNomePers.value = '';
+      inputCogPers.value = '';
+      inputMansione.value = '';
+      inputNotePers.value = '';
+      filterPersonale.value = '';
+      await caricaDati();
+    } catch(e) {
+      alert('Errore salvataggio persona: ' + e.message);
+    }
+  };
+
+  function renderPersonale() {
+    const filterText = filterPersonale.value.toLowerCase();
+    tablePersonaleBody.innerHTML = '';
+    persone
+      .filter(p => 
+        p.n.toLowerCase().includes(filterText) || 
+        p.c.toLowerCase().includes(filterText) || 
+        (p.m && p.m.toLowerCase().includes(filterText))
+      )
+      .forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.n}</td>
+        <td>${p.c}</td>
+        <td>${p.m || ''}</td>
+        <td>${p.note || ''}</td>
+        <td>
+          <button class="btn-icon edit" data-id="${p.id}" title="Modifica">${iconEdit}</button>
+          <button class="btn-icon delete" data-id="${p.id}" title="Cancella">${iconDelete}</button>
+        </td>`;
+      tablePersonaleBody.appendChild(tr);
+    });
+    // Eventi modifica
+    tablePersonaleBody.querySelectorAll('button.edit').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        const persona = persone.find(p => p.id === id);
+        if(!persona) return;
+        inputNomePers.value = persona.n;
+        inputCogPers.value = persona.c;
+        inputMansione.value = persona.m || '';
+        inputNotePers.value = persona.note || '';
+        editingPersId = id;
+        btnSavePers.textContent = 'Modifica';
+      };
+    });
+    // Eventi cancella
+    tablePersonaleBody.querySelectorAll('button.delete').forEach(btn => {
+      btn.onclick = async () => {
+        if(confirm('Sei sicuro di cancellare questa persona? (verranno cancellati anche i piani associati)')) {
+          const id = btn.dataset.id;
+          try {
+            // Cancella piani associati
+            const pianiDocs = await db.collection('piani').get();
+            const batch = db.batch();
+            pianiDocs.forEach(doc => {
+              const data = doc.data();
+              if(data.p.includes(id)) batch.delete(doc.ref);
+            });
+            batch.delete(db.collection('persone').doc(id));
+            await batch.commit();
+            await caricaDati();
+          } catch(e) {
+            alert('Errore cancellazione: ' + e.message);
+          }
+        }
+      };
+    });
+  }
+
+  filterPersonale.addEventListener('input', renderPersonale);
+
+  // --- PIANIFICAZIONE ---
+  const dataPlan = document.getElementById('dataPlan');
+  const selectCantiere = document.getElementById('selectCantiere');
+  const selectPers = document.getElementById('selectPers');
+  const notePlan = document.getElementById('notePlan');
+  const btnAddPlan = document.getElementById('btnAddPlan');
+  const tablePlanBody = document.querySelector('#tablePlan tbody');
+
+  async function populateCantieriSelect() {
+    selectCantiere.innerHTML = '';
+    // Usa solo cantieri usati in pianificazione per tabella + tutti per select
+    cantieri.forEach(c => {
+      const option = document.createElement('option');
+      option.value = c.nome;
+      option.textContent = c.nome;
+      selectCantiere.appendChild(option);
+    });
+  }
+
+  function updateDipendentiSelect() {
+    selectPers.innerHTML = '';
+    persone.forEach(p => {
+      const option = document.createElement('option');
+      option.value = p.id;
+      option.textContent = p.n + ' ' + p.c + (p.m ? ' ('+p.m+')' : '');
+      selectPers.appendChild(option);
+    });
+  }
+
+  btnAddPlan.onclick = async () => {
+    const d = dataPlan.value;
+    const c = selectCantiere.value;
+    const selectedPers = Array.from(selectPers.selectedOptions).map(opt => opt.value);
+    const note = notePlan.value.trim();
+
+    if(!d) return alert('Inserisci la data');
+    if(!c) return alert('Seleziona un cantiere');
+    if(selectedPers.length === 0) return alert('Seleziona almeno un dipendente');
+
+    try {
+      await db.collection('piani').add({ data: d, c, p: selectedPers, note });
+      dataPlan.value = '';
+      notePlan.value = '';
+      selectPers.selectedIndex = -1;
+      selectCantiere.selectedIndex = 0;
+      await caricaDati();
+    } catch(e) {
+      alert('Errore assegnazione: ' + e.message);
+    }
+  };
+
+  function renderPianificazione() {
+    // Prima filtro i cantieri usati e aggiorno la tabella con solo questi
+    const cantieriUsati = [...new Set(piani.map(p => p.c))];
+    // Filtro select cantieri per mostrare solo quelli usati
+    // Ma per comodità lascio tutti nel select (utente vuole sempre poter scegliere tutti)
+    // Per la tabella invece filtro colonne vuote (in questo caso solo colonna cantiere)
+    
+    tablePlanBody.innerHTML = '';
+    if(piani.length === 0) return;
+
+    piani.forEach(plan => {
+      // Recupera nomi dipendenti associati (da ID)
+      const nomi = plan.p.map(pid => {
+        const pers = persone.find(p => p.id === pid);
+        return pers ? pers.n + ' ' + pers.c : '(sconosciuto)';
+      }).join(', ');
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${plan.data}</td>
+        <td>${plan.c}</td>
+        <td>${nomi}</td>
+        <td>${plan.note || ''}</td>
+        <td>
+          <button class="btn-icon delete" data-id="${plan.id}" title="Cancella">${iconDelete}</button>
+          <button class="btn-icon edit" data-id="${plan.id}" title="Modifica">${iconEdit}</button>
+        </td>`;
+      tablePlanBody.appendChild(tr);
+    });
+
+    // Rimuovo colonne cantieri non usati (non ha senso in tabella con una sola colonna cantiere)
+
+    // Eventi cancella
+    tablePlanBody.querySelectorAll('button.delete').forEach(btn => {
+      btn.onclick = async () => {
+        if(confirm('Sei sicuro di cancellare questo intervento?')) {
+          try {
+            await db.collection('piani').doc(btn.dataset.id).delete();
+            await caricaDati();
+          } catch(e) {
+            alert('Errore cancellazione: ' + e.message);
+          }
+        }
+      };
+    });
+
+    // Eventi modifica
+    tablePlanBody.querySelectorAll('button.edit').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        const plan = piani.find(p => p.id === id);
+        if(!plan) return;
+        dataPlan.value = plan.data;
+        notePlan.value = plan.note || '';
+        // Seleziono cantiere
+        for(let i=0; i<selectCantiere.options.length; i++) {
+          if(selectCantiere.options[i].value === plan.c) {
+            selectCantiere.selectedIndex = i;
+            break;
+          }
+        }
+        // Seleziono dipendenti
+        for(let i=0; i<selectPers.options.length; i++) {
+          selectPers.options[i].selected = plan.p.includes(selectPers.options[i].value);
+        }
+        // Cambia bottone Assegna in Modifica
+        btnAddPlan.textContent = 'Modifica';
+        editingPlanId = id;
+      };
+    });
+  }
+
+  let editingPlanId = null;
+  btnAddPlan.onclick = async () => {
+    const d = dataPlan.value;
+    const c = selectCantiere.value;
+    const selectedPers = Array.from(selectPers.selectedOptions).map(opt => opt.value);
+    const note = notePlan.value.trim();
+
+    if(!d) return alert('Inserisci la data');
+    if(!c) return alert('Seleziona un cantiere');
+    if(selectedPers.length === 0) return alert('Seleziona almeno un dipendente');
+
+    try {
+      if(editingPlanId) {
+        // Modifica intervento
+        await db.collection('piani').doc(editingPlanId).update({ data: d, c, p: selectedPers, note });
+        editingPlanId = null;
+        btnAddPlan.textContent = 'Assegna';
+      } else {
+        await db.collection('piani').add({ data: d, c, p: selectedPers, note });
+      }
+      dataPlan.value = '';
+      notePlan.value = '';
+      selectPers.selectedIndex = -1;
+      selectCantiere.selectedIndex = 0;
+      await caricaDati();
+    } catch(e) {
+      alert('Errore assegnazione: ' + e.message);
+    }
+  };
+
+  // Avvio caricamento dati
+  caricaDati();
+
+})();
 </script>
 </body>
 </html>
