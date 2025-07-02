@@ -1,40 +1,37 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Gestione Cantieri e Personale - con Firebase</title>
-<style>
-  body { font-family: Arial,sans-serif; background:#f9f9f9; margin:20px; }
-  h1,h2 { color:#2c3e50; }
-  .container { max-width: 1100px; margin: auto; }
-  .tabs { display: flex; gap:10px; margin-bottom: 20px; }
-  .tab { background:#34495e; color:#fff; padding:10px 20px; border-radius: 4px 4px 0 0; cursor: pointer; user-select:none; }
-  .tab.active { background:#2c3e50; font-weight:bold; }
-  .content { background:#fff; padding:20px; border-radius: 0 4px 4px 4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); display:none; overflow-x:auto; }
-  .content.active { display:block; }
-  label { font-weight:bold; margin-top:10px; display:block; }
-  input, select, textarea { width: 100%; padding:6px; margin-top:4px; box-sizing: border-box; }
-  textarea { resize: vertical; }
-  select[multiple] { height: 130px; }
-  button { margin-top: 10px; padding: 6px 14px; border:none; background:#3498db; color:#fff; border-radius:4px; cursor:pointer; }
-  button:hover { background:#2980b9; }
-  table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; vertical-align: top; word-wrap: break-word; }
-  th { background:#34495e; color:#fff; }
-  .btn-wrapper { display: flex; flex-direction: column; align-items: flex-end; gap:5px; }
-  .btn-edit, .btn-delete { border:none; padding:5px 10px; border-radius:3px; color:#fff; cursor:pointer; }
-  .btn-edit { background:#f1c40f; }
-  .btn-edit:hover { background:#d4ac0d; }
-  .btn-delete { background:#e74c3c; }
-  .btn-delete:hover { background:#c0392b; }
-  td.date-cell { cursor:pointer; color:#2980b9; text-decoration: underline; }
-  .week-display { font-style: italic; margin-top: 6px; }
-  @media (max-width: 700px) { .tabs { flex-wrap: wrap; } }
-</style>
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gestione Cantieri e Personale - con Firebase</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 20px; }
+    h1, h2 { color: #2c3e50; }
+    .container { max-width: 1100px; margin: auto; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab { background: #34495e; color: #fff; padding: 10px 20px; border-radius: 4px 4px 0 0; cursor: pointer; }
+    .tab.active { background: #2c3e50; font-weight: bold; }
+    .content { display: none; background: #fff; padding: 20px; border-radius: 0 4px 4px 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .content.active { display: block; }
+    label { font-weight: bold; margin-top: 10px; display: block; }
+    input, select, textarea, button { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; }
+    select[multiple] { height: 130px; }
+    button { background: #3498db; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #2980b9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; vertical-align: top; }
+    th { background: #34495e; color: #fff; }
+    .btn-wrapper { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .btn-edit { background: #f1c40f; }
+    .btn-edit:hover { background: #d4ac0d; }
+    .btn-delete { background: #e74c3c; }
+    .btn-delete:hover { background: #c0392b; }
+    .small-btn { width: auto; margin: 2px 0; font-size: 0.9em; padding: 4px 8px; }
+    .week-display { font-style: italic; margin-top: 6px; }
+    @media (max-width: 700px) { .tabs { flex-wrap: wrap; } }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="container">
@@ -52,9 +49,9 @@
     <label for="nomeCantiere">Nome cantiere</label>
     <input id="nomeCantiere" placeholder="Inserisci nome cantiere" />
     <button id="btnSaveCant">Salva</button>
-    <table id="tableCantieri">
+    <table>
       <thead><tr><th>Nome</th><th>Azioni</th></tr></thead>
-      <tbody></tbody>
+      <tbody id="tbodyCantieri"></tbody>
     </table>
   </div>
 
@@ -68,11 +65,11 @@
     <label for="mansionePersona">Mansione</label>
     <input id="mansionePersona" placeholder="Mansione" />
     <label for="notePersona">Note</label>
-    <textarea id="notePersona" rows="2" placeholder="Note su persona (opzionale)"></textarea>
+    <textarea id="notePersona" rows="2" placeholder="Note (opzionale)"></textarea>
     <button id="btnSavePers">Salva</button>
-    <table id="tablePersonale">
+    <table>
       <thead><tr><th>Nome</th><th>Cognome</th><th>Mansione</th><th>Note</th><th>Azioni</th></tr></thead>
-      <tbody></tbody>
+      <tbody id="tbodyPers"></tbody>
     </table>
   </div>
 
@@ -82,100 +79,209 @@
     <label for="dataPlan">Data intervento</label>
     <input type="date" id="dataPlan" />
     <div class="week-display" id="weekDisplay"></div>
-    <div id="dataPlanConGiorno" style="margin-top:6px; font-weight:bold;"></div>
+    <div id="dataPlanConGiorno"></div>
 
     <label for="selectCantiere">Cantiere</label>
-    <select id="selectCantiere">
-      <option value="" disabled selected>-- Seleziona cantiere --</option>
-    </select>
+    <select id="selectCantiere"><option value="" disabled selected>-- Seleziona cantiere --</option></select>
 
-    <label for="selectPers">Dipendenti (seleziona uno o più)</label>
+    <label for="selectPers">Dipendenti</label>
     <select id="selectPers" multiple></select>
 
     <label for="notePlan">Note</label>
     <textarea id="notePlan" rows="2"></textarea>
 
     <button id="btnAddPlan">Assegna</button>
-    <button id="btnCancelEditPlan" style="display:none; margin-left:10px;">Annulla Modifica</button>
+    <button id="btnCancelEditPlan" style="display:none;">Annulla Modifica</button>
 
-    <table id="tablePlan">
-      <thead>
-        <tr>
-          <th>Data</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
+    <table>
+      <thead><tr><th>Data</th><th>Cantiere</th><th>Dipendenti</th><th>Note</th><th>Azioni</th></tr></thead>
+      <tbody id="tbodyPlan"></tbody>
     </table>
-    <button id="btnExportSettimana" style="margin-top: 10px;">Esporta pianificazione settimanale</button>
   </div>
 
   <!-- Anteprima Annuale -->
   <div id="annuale" class="content">
-    <h2>Anteprima Annuale - Seleziona Settimana e Anno</h2>
+    <h2>Anteprima Annuale</h2>
     <label for="numWeekSelect">Settimana #</label>
     <input type="number" id="numWeekSelect" min="1" max="54" value="1" />
     <label for="yearSelect">Anno</label>
     <input type="number" id="yearSelect" min="2000" max="2100" value="2025" />
-    <table id="tableAnnual">
-      <thead>
-        <tr><th>Data</th></tr>
-      </thead>
-      <tbody></tbody>
+    <table>
+      <thead><tr><th>Data</th><th>Cantieri</th></tr></thead>
+      <tbody id="tbodyAnnual"></tbody>
     </table>
-    <button id="btnExportAnnual" style="margin-top:10px;">Esporta settimana</button>
   </div>
 </div>
+
 <script>
 (() => {
-  const firebaseConfig = {...};
+  const firebaseConfig = {
+    apiKey: "AIzaSyCuuDAmZeR0TV7FZHt8uK4LQRrfCyGMtNA",
+    authDomain: "gestione-cantieri-5c820.firebaseapp.com",
+    projectId: "gestione-cantieri-5c820",
+    storageBucket: "gestione-cantieri-5c820.appspot.com",
+    messagingSenderId: "591449856782",
+    appId: "1:591449856782:web:e7c218671fc488ea19d55f",
+    measurementId: "G-7NFGJPEFWL"
+  };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   let cantieri = [], persone = [], piani = [];
-  let editingPlanId = null;
+  let editingPlan = null;
 
-  const tabs = document.querySelectorAll('.tab');
-  tabs.forEach(tab => tab.addEventListener('click', ()=>{/*...*/}));
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab, .content').forEach(el => el.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab).classList.add('active');
+      if(tab.dataset.tab === 'pianificazione') aggiornaPianificazione();
+    });
+  });
 
   async function caricaDati() {
-    /* carica cantieri, persone, piani, poi render */
+    const cSnap = await db.collection('cantieri').get();
+    cantieri = cSnap.docs.map(d => ({ id: d.id, nome: d.data().nome }));
+    renderCantieri();
+
+    const pSnap = await db.collection('persone').get();
+    persone = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderPersone();
+
+    const planSnap = await db.collection('piani').get();
+    piani = planSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderPiani();
   }
 
-  document.getElementById('btnAddPlan').onclick = async () => {
-    /* salva o aggiorna pianificazione */
-    await caricaDati(); initPlan();
-  };
-  document.getElementById('btnCancelEditPlan').onclick = () => {/* annulla modifica */};
+  // Cantieri CRUD
+  document.getElementById('btnSaveCant').addEventListener('click', async () => {
+    const nome = document.getElementById('nomeCantiere').value.trim();
+    if(!nome) return alert('Inserisci nome');
+    await db.collection('cantieri').add({ nome });
+    document.getElementById('nomeCantiere').value = '';
+    caricaDati();
+  });
 
-  async function cancellaPianificazione(id) {
-    await db.collection('piani').doc(id).delete();
-    await caricaDati(); initPlan();
-  }
-
-  function renderPlan() {
-    /* genera header */
-    const tbody = document.querySelector('#tablePlan tbody'); tbody.innerHTML='';
-    /* raggruppa e crea righe */
-    piani.sort((a,b)=>a.d.localeCompare(b.d)).forEach(plan => {
+  function renderCantieri() {
+    const tbody = document.getElementById('tbodyCantieri'); tbody.innerHTML = '';
+    cantieri.forEach(c => {
       const tr = document.createElement('tr');
-      /* ogni cella di cantiere */
-      const btnEd = document.createElement('button'); btnEd.textContent='✏️'; btnEd.onclick = () => editPlan(plan);
-      const btnDel = document.createElement('button'); btnDel.textContent='✖️'; btnDel.onclick = () => { if(confirm('Confermi cancellazione?')) cancellaPianificazione(plan.id); };
-      /* aggiungi bottoni nel td */
+      tr.innerHTML = `<td>${c.nome}</td><td><div class='btn-wrapper'></div></td>`;
+      const wrap = tr.querySelector('.btn-wrapper');
+      const btnE = document.createElement('button'); btnE.textContent = 'Modifica'; btnE.className = 'btn-edit small-btn';
+      btnE.onclick = () => {
+        document.getElementById('nomeCantiere').value = c.nome;
+        document.getElementById('btnSaveCant').textContent = 'Aggiorna';
+        document.getElementById('btnSaveCant').onclick = async () => {
+          await db.collection('cantieri').doc(c.id).update({ nome: document.getElementById('nomeCantiere').value });
+          document.getElementById('btnSaveCant').textContent = 'Salva';
+          caricaDati();
+        };
+      };
+      const btnD = document.createElement('button'); btnD.textContent = 'Cancella'; btnD.className = 'btn-delete small-btn';
+      btnD.onclick = async () => { if(confirm('Confermi?')) { await db.collection('cantieri').doc(c.id).delete(); caricaDati(); }};
+      wrap.append(btnE, btnD);
+      tbody.append(tr);
     });
   }
 
-  function editPlan(plan) {
-    editingPlanId = plan.id;
-    document.getElementById('dataPlan').value = plan.d;
-    document.getElementById('selectCantiere').value = plan.c;
-    document.getElementById('notePlan').value = plan.n;
-    /* aggiorna lista dipendenti e seleziona quelli di plan.p */
-    document.getElementById('btnAddPlan').textContent='Aggiorna';
-    document.getElementById('btnCancelEditPlan').style.display = 'inline-block';
+  // Personale CRUD
+  document.getElementById('btnSavePers').addEventListener('click', async () => {
+    const n = document.getElementById('nomePersona').value.trim();
+    const c = document.getElementById('cognomePersona').value.trim();
+    if(!n||!c) return alert('Nome e cognome obbligatori');
+    await db.collection('persone').add({ n, c, m: document.getElementById('mansionePersona').value, note: document.getElementById('notePersona').value });
+    ['nomePersona','cognomePersona','mansionePersona','notePersona'].forEach(id => document.getElementById(id).value='');
+    caricaDati();
+  });
+
+  function renderPersone() {
+    const tbody = document.getElementById('tbodyPers'); tbody.innerHTML = '';
+    persone.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${p.n}</td><td>${p.c}</td><td>${p.m}</td><td>${p.note}</td><td><div class='btn-wrapper'></div></td>`;
+      const wrap = tr.querySelector('.btn-wrapper');
+      const btnE = document.createElement('button'); btnE.textContent='Modifica'; btnE.className='btn-edit small-btn';
+      btnE.onclick = () => {
+        document.getElementById('nomePersona').value=p.n;
+        document.getElementById('cognomePersona').value=p.c;
+        document.getElementById('mansionePersona').value=p.m;
+        document.getElementById('notePersona').value=p.note;
+        document.getElementById('btnSavePers').textContent='Aggiorna';
+        document.getElementById('btnSavePers').onclick = async () => {
+          await db.collection('persone').doc(p.id).update({ n:document.getElementById('nomePersona').value, c:document.getElementById('cognomePersona').value, m:document.getElementById('mansionePersona').value, note:document.getElementById('notePersona').value });
+          document.getElementById('btnSavePers').textContent='Salva';
+          ['nomePersona','cognomePersona','mansionePersona','notePersona'].forEach(id => document.getElementById(id).value='');
+          caricaDati();
+        };
+      };
+      const btnD = document.createElement('button'); btnD.textContent='Cancella'; btnD.className='btn-delete small-btn';
+      btnD.onclick = async () => { if(confirm('Confermi?')) { await db.collection('persone').doc(p.id).delete(); caricaDati(); }};
+      wrap.append(btnE, btnD);
+      tbody.append(tr);
+    });
   }
 
-  /* initPlan, populateCantieriSelect, updatePlanLists, renderAnnual, date util */
-  window.cancellaPianificazione = cancellaPianificazione;
+  // Pianificazione
+  document.getElementById('btnAddPlan').addEventListener('click', async () => {
+    const d = document.getElementById('dataPlan').value;
+    const c = document.getElementById('selectCantiere').value;
+    const p = Array.from(document.getElementById('selectPers').selectedOptions).map(o=>o.value);
+    const n = document.getElementById('notePlan').value;
+    if(!d||!c||p.length===0) return alert('Compila tutti i campi');
+    if(editingPlan) {
+      await db.collection('piani').doc(editingPlan).update({ d,c,p,n });
+      editingPlan = null;
+      document.getElementById('btnAddPlan').textContent='Assegna';
+      document.getElementById('btnCancelEditPlan').style.display='none';
+    } else {
+      await db.collection('piani').add({ d,c,p,n });
+    }
+    aggiornaPianificazione(); caricaDati();
+  });
+
+  document.getElementById('btnCancelEditPlan').addEventListener('click', () => {
+    editingPlan = null;
+    document.getElementById('btnAddPlan').textContent='Assegna';
+    document.getElementById('btnCancelEditPlan').style.display='none';
+  });
+
+  function aggiornaPianificazione() {
+    // reset form
+    document.getElementById('selectCantiere').innerHTML = '<option value="" disabled selected>-- Seleziona cantiere --</option>' + cantieri.map(c=>`<option value="${c.nome}">${c.nome}</option>`).join('');
+    const used = new Set(piani.filter(p=>p.d===document.getElementById('dataPlan').value).flatMap(p=>p.p));
+    document.getElementById('selectPers').innerHTML = persone.filter(p=>!used.has(p.id)).map(p=>`<option value="${p.id}">${p.n} ${p.c}</option>`).join('');
+    renderPiani();
+  }
+
+  function renderPiani() {
+    const tbody = document.getElementById('tbodyPlan'); tbody.innerHTML='';
+    piani.sort((a,b)=>a.d.localeCompare(b.d)).forEach(plan=>{
+      const tr = document.createElement('tr');
+      const dip = plan.p.map(id=>{
+        const pp = persone.find(x=>x.id===id);
+        return pp? pp.n+' '+pp.c : '???';
+      }).join(', ');
+      tr.innerHTML = `<td>${plan.d}</td><td>${plan.c}</td><td>${dip}</td><td>${plan.n}</td><td><div class='btn-wrapper'></div></td>`;
+      const wrap = tr.querySelector('.btn-wrapper');
+      const btnE = document.createElement('button'); btnE.textContent='✏️'; btnE.className='btn-edit small-btn';
+      btnE.onclick = () => {
+        editingPlan = plan.id;
+        document.getElementById('dataPlan').value = plan.d;
+        document.getElementById('notePlan').value = plan.n;
+        document.getElementById('btnAddPlan').textContent='Aggiorna';
+        document.getElementById('btnCancelEditPlan').style.display='block';
+        aggiornaPianificazione();
+        Array.from(document.getElementById('selectPers').options).forEach(opt=>{ opt.selected = plan.p.includes(opt.value); });
+      };
+      const btnD = document.createElement('button'); btnD.textContent='✖️'; btnD.className='btn-delete small-btn';
+      btnD.onclick = async () => { if(confirm('Confermi?')){ await db.collection('piani').doc(plan.id).delete(); caricaDati(); }};
+      wrap.append(btnE, btnD);
+      tbody.append(tr);
+    });
+  }
+
+  // Carica all'avvio
   caricaDati();
 })();
 </script>
