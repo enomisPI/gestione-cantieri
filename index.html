@@ -107,10 +107,10 @@
     <label for="selectPers">Dipendenti (seleziona uno o più)</label>
     <select id="selectPers" multiple></select>
 
+    <button id="btnAddPlan" style="margin-bottom: 8px;">Assegna</button>
+
     <label for="notePlan">Note</label>
     <textarea id="notePlan" rows="2"></textarea>
-
-    <button id="btnAddPlan">Assegna</button>
 
     <table id="tablePlan" style="margin-top: 20px;">
       <thead>
@@ -237,8 +237,14 @@
     return d.toISOString().split('T')[0];
   }
 
-  function formatDateReadable(d) {
-    return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'numeric' });
+  function formatDateReadableWithDay(d) {
+    // formato gg/mm/aaaa Lun.
+    const giorniSettimana = ['Dom.', 'Lun.', 'Mar.', 'Mer.', 'Gio.', 'Ven.', 'Sab.'];
+    const giornoAbbrev = giorniSettimana[d.getDay()];
+    const gg = ('0' + d.getDate()).slice(-2);
+    const mm = ('0' + (d.getMonth()+1)).slice(-2);
+    const yyyy = d.getFullYear();
+    return `${gg}/${mm}/${yyyy} ${giornoAbbrev}`;
   }
 
   // --- CARICAMENTO DATI ---
@@ -272,7 +278,6 @@
     if(val.length > 50) return alert('Nome cantiere troppo lungo (max 50 caratteri)');
     try {
       if(editingCantId) {
-        // Aggiorna
         if(cantieri.find(c => c.nome.toLowerCase() === val.toLowerCase() && c.id !== editingCantId)) {
           throw new Error("Cantiere già presente con questo nome");
         }
@@ -310,9 +315,9 @@
       btn.onclick = async () => {
         if(confirm('Sei sicuro di cancellare questo cantiere?')) {
           try {
-            // Cancella cantiere e pianificazioni relative
             await db.collection('cantieri').doc(btn.dataset.id).delete();
 
+            // Cancello tutte le pianificazioni di questo cantiere
             const cantiere = cantieri.find(c => c.id === btn.dataset.id);
             if (cantiere) {
               const pianiDocs = await db.collection('piani').where('c', '==', cantiere.nome).get();
@@ -333,7 +338,6 @@
         editingCantId = btn.dataset.id;
         inputCant.value = btn.dataset.nome;
         btnSaveCant.textContent = 'Aggiorna';
-        // Cambia tab se serve
         tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'cantieri'));
         contents.forEach(c => c.classList.toggle('active', c.id === 'cantieri'));
         inputCant.focus();
@@ -355,18 +359,17 @@
     if(m.length > 50) return alert('Mansione troppo lunga (max 50 caratteri)');
     try {
       if(editingPersId) {
-        // Aggiorna persona
         if(persone.find(p => p.n.toLowerCase() === n.toLowerCase() && p.c.toLowerCase() === c.toLowerCase() && p.id !== editingPersId)) {
-          throw new Error("Persona già presente");
+          throw new Error("Persona già presente con questo nome e cognome");
         }
-        await db.collection('persone').doc(editingPersId).update({n,c,m,note});
+        await db.collection('persone').doc(editingPersId).update({n, c, m, note});
         editingPersId = null;
         btnSavePers.textContent = 'Salva';
       } else {
         if(persone.find(p => p.n.toLowerCase() === n.toLowerCase() && p.c.toLowerCase() === c.toLowerCase())) {
-          throw new Error("Persona già presente");
+          throw new Error("Persona già presente con questo nome e cognome");
         }
-        await db.collection('persone').add({n,c,m,note});
+        await db.collection('persone').add({n, c, m, note});
       }
       inputNomePers.value = '';
       inputCogPers.value = '';
@@ -381,7 +384,9 @@
   function renderPers() {
     const filtro = filterPersone.value.toLowerCase();
     tablePers.innerHTML = '';
-    persone.filter(p => (p.n + ' ' + p.c).toLowerCase().includes(filtro)).forEach(p => {
+    persone.filter(p => {
+      return p.n.toLowerCase().includes(filtro) || p.c.toLowerCase().includes(filtro) || (p.m && p.m.toLowerCase().includes(filtro));
+    }).forEach(p => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${p.n}</td><td>${p.c}</td><td>${p.m || ''}</td><td>${p.note || ''}</td>
@@ -422,7 +427,6 @@
         inputMansione.value = btn.dataset.m;
         inputNotePers.value = btn.dataset.note;
         btnSavePers.textContent = 'Aggiorna';
-        // Cambia tab se serve
         tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'personale'));
         contents.forEach(c => c.classList.toggle('active', c.id === 'personale'));
         inputNomePers.focus();
@@ -445,12 +449,43 @@
   }
 
   function updatePlanLists() {
+    // Popolo lista dipendenti disponibili (non assegnati alla data e cantiere selezionata)
+    aggiornaSelectPers();
+  }
+
+  // Funzione che aggiorna la lista dipendenti disponibili in base a data e cantiere
+  function aggiornaSelectPers() {
     selectPers.innerHTML = '';
+
+    const dataVal = dataPlan.value;
+    const cantiereVal = selectCantiere.value;
+
+    // Se manca data o cantiere, mostro tutta la lista
+    if(!dataVal || !cantiereVal) {
+      persone.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = p.n + ' ' + p.c;
+        selectPers.appendChild(option);
+      });
+      return;
+    }
+
+    // Trovo persone già assegnate per quella data e cantiere
+    const assegnati = new Set();
+    piani.forEach(pl => {
+      if(pl.d === dataVal && pl.c === cantiereVal) {
+        pl.p.forEach(idp => assegnati.add(idp));
+      }
+    });
+
     persone.forEach(p => {
-      const option = document.createElement('option');
-      option.value = p.id;
-      option.textContent = p.n + ' ' + p.c;
-      selectPers.appendChild(option);
+      if(!assegnati.has(p.id)) {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = p.n + ' ' + p.c;
+        selectPers.appendChild(option);
+      }
     });
   }
 
@@ -458,17 +493,21 @@
     if(!dataPlan.value) {
       weekDisplay.textContent = '';
       dataPlanConGiorno.textContent = '';
+      aggiornaSelectPers();
       return;
     }
     const d = new Date(dataPlan.value);
     const w = getWeekNumber(d);
     weekDisplay.textContent = `Settimana numero: ${w}`;
-    const giorniSettimana = [];
-    for(let i=1; i<=7; i++) {
-      const dd = getDateFromWeek(d.getFullYear(), w, i);
-      giorniSettimana.push(formatDateReadable(dd));
-    }
-    dataPlanConGiorno.textContent = `Giorni settimana: ${giorniSettimana.join(', ')}`;
+
+    // Mostro la data selezionata con giorno accanto
+    dataPlanConGiorno.textContent = formatDateReadableWithDay(d);
+
+    aggiornaSelectPers();
+  };
+
+  selectCantiere.onchange = () => {
+    aggiornaSelectPers();
   };
 
   btnAddPlan.onclick = async () => {
@@ -480,9 +519,6 @@
     if(selectedPers.length === 0) return alert('Seleziona almeno un dipendente');
     const noteVal = notePlan.value.trim();
 
-    // Controllo per non duplicare interventi uguali con stesso cantiere e data e persone
-    // Ma per semplicità accettiamo doppi
-
     try {
       await db.collection('piani').add({
         d: dataVal,
@@ -493,6 +529,10 @@
       notePlan.value = '';
       selectPers.selectedIndex = -1;
       await caricaDati();
+
+      // Dopo assegnazione aggiorno la lista dipendenti disponibili per questa data/cantiere (rimuovo appena assegnati)
+      aggiornaSelectPers();
+
     } catch(e) {
       alert('Errore salvataggio pianificazione: ' + e.message);
     }
@@ -500,31 +540,37 @@
 
   // Render tabella pianificazione
   function renderPlan() {
-    // Pulisco intestazione, rendo nuova con colonne cantieri + colonna data
+    // Prendo tutte le date distinte da piani e ordino
+    const datesSet = new Set(piani.map(p => p.d));
+    const dates = Array.from(datesSet).sort();
+
+    // Per le colonne mostro solo cantieri usati in almeno una pianificazione esistente
+    const cantieriUsatiSet = new Set(piani.map(p => p.c));
+    const cantieriUsati = cantieri.filter(c => cantieriUsatiSet.has(c.nome));
+
+    // Intestazione tabella
     tablePlanHead.innerHTML = '<th>Data</th>';
-    cantieri.forEach(c => {
+    cantieriUsati.forEach(c => {
       const th = document.createElement('th');
       th.textContent = c.nome;
       tablePlanHead.appendChild(th);
     });
 
-    // Preparo righe raggruppate per data (e settimana)
-    // Ricavo tutte le date pianificate
-    const datesSet = new Set(piani.map(p => p.d));
-    const dates = Array.from(datesSet).sort();
-
+    // Corpo tabella
     tablePlanBody.innerHTML = '';
 
     dates.forEach(d => {
       const tr = document.createElement('tr');
+      const dataObj = new Date(d);
+      const dataTxt = formatDateReadableWithDay(dataObj);
       const tdData = document.createElement('td');
-      tdData.textContent = d;
+      tdData.textContent = dataTxt;
       tr.appendChild(tdData);
 
-      // Per ogni cantiere cerco la pianificazione in data
-      cantieri.forEach(c => {
+      cantieriUsati.forEach(c => {
         const td = document.createElement('td');
         td.style.maxWidth = '150px';
+
         // Trovo pianificazione con data=d e cantiere=c.nome
         const piano = piani.find(pl => pl.d === d && pl.c === c.nome);
         if(piano) {
@@ -567,25 +613,48 @@
 
     // Pulisco intestazione e corpo
     tableAnnualHead.innerHTML = '<th>Data</th>';
-    cantieri.forEach(c => {
+
+    // Trovo giorni della settimana da lunedì a domenica
+    const giorniSettimana = [];
+    for(let i=1; i<=7; i++) {
+      const dd = getDateFromWeek(yearNum, weekNum, i);
+      giorniSettimana.push(dd);
+    }
+
+    // Trovo cantieri usati in questa settimana (solo quelli con almeno una pianificazione)
+    const nomiCantieriUsati = new Set();
+    piani.forEach(pl => {
+      const plDate = new Date(pl.d);
+      if(plDate >= giorniSettimana[0] && plDate <= giorniSettimana[6]) {
+        nomiCantieriUsati.add(pl.c);
+      }
+    });
+    const cantieriUsati = cantieri.filter(c => nomiCantieriUsati.has(c.nome));
+
+    // Creo intestazioni colonne cantieri usati
+    cantieriUsati.forEach(c => {
       const th = document.createElement('th');
       th.textContent = c.nome;
       tableAnnualHead.appendChild(th);
     });
+
+    // Pulisco corpo tabella
     tableAnnualBody.innerHTML = '';
 
     // Creo 7 righe per la settimana
-    for(let i=1; i<=7; i++) {
+    giorniSettimana.forEach(dt => {
       const tr = document.createElement('tr');
-      const dt = getDateFromWeek(yearNum, weekNum, i);
       const strDate = formatDate(dt);
+      const strDateLeggibile = formatDateReadableWithDay(dt);
+
       const tdData = document.createElement('td');
-      tdData.textContent = strDate + ' (' + dt.toLocaleDateString('it-IT', {weekday: 'short'}) + ')';
+      tdData.textContent = strDateLeggibile;
       tr.appendChild(tdData);
 
-      cantieri.forEach(c => {
+      cantieriUsati.forEach(c => {
         const td = document.createElement('td');
         td.style.maxWidth = '150px';
+
         // Trovo eventuale pianificazione in data cantiere
         const piano = piani.find(pl => pl.d === strDate && pl.c === c.nome);
         if(piano) {
@@ -603,7 +672,7 @@
       });
 
       tableAnnualBody.appendChild(tr);
-    }
+    });
   }
 
   numWeekSelect.oninput = renderAnnual;
@@ -613,25 +682,45 @@
   btnExportSettimana.onclick = () => {
     if(tablePlanBody.rows.length === 0) return alert('Nessuna pianificazione da esportare.');
     let csv = 'Data;';
-    cantieri.forEach(c => { csv += `"${c.nome}";`; });
+    // Solo colonne cantieri usati
+    const cantieriUsatiSet = new Set(piani.map(p => p.c));
+    const cantieriUsati = cantieri.filter(c => cantieriUsatiSet.has(c.nome));
+    cantieriUsati.forEach(c => { csv += `"${c.nome}";`; });
     csv += '\n';
 
     for(let row of tablePlanBody.rows) {
       let line = row.cells[0].textContent + ';';
       for(let i=1; i<row.cells.length; i++) {
-        // Sostituisco ; per evitare problemi csv
         let txt = row.cells[i].textContent.replace(/;/g, ',');
         line += `"${txt}";`;
       }
       csv += line + '\n';
     }
-    scaricaCSV(csv, `pianificazione_settimana_${new Date().toISOString().slice(0,10)}.csv`);
+    const nowStr = new Date().toISOString().slice(0,10);
+    scaricaCSV(csv, `pianificazione_settimana_${nowStr}.csv`);
   };
 
   btnExportAnnual.onclick = () => {
     if(tableAnnualBody.rows.length === 0) return alert('Nessuna pianificazione da esportare.');
     let csv = 'Data;';
-    cantieri.forEach(c => { csv += `"${c.nome}";`; });
+    // Colonne solo cantieri usati
+    const weekNum = Number(numWeekSelect.value);
+    const yearNum = Number(yearSelect.value);
+
+    const giorniSettimana = [];
+    for(let i=1; i<=7; i++) {
+      const dd = getDateFromWeek(yearNum, weekNum, i);
+      giorniSettimana.push(dd);
+    }
+    const nomiCantieriUsati = new Set();
+    piani.forEach(pl => {
+      const plDate = new Date(pl.d);
+      if(plDate >= giorniSettimana[0] && plDate <= giorniSettimana[6]) {
+        nomiCantieriUsati.add(pl.c);
+      }
+    });
+    const cantieriUsati = cantieri.filter(c => nomiCantieriUsati.has(c.nome));
+    cantieriUsati.forEach(c => { csv += `"${c.nome}";`; });
     csv += '\n';
 
     for(let row of tableAnnualBody.rows) {
@@ -642,7 +731,7 @@
       }
       csv += line + '\n';
     }
-    scaricaCSV(csv, `pianificazione_annual_settimana_${numWeekSelect.value}_anno_${yearSelect.value}.csv`);
+    scaricaCSV(csv, `pianificazione_settimana_${weekNum}_anno_${yearNum}.csv`);
   };
 
   function scaricaCSV(csv, filename) {
