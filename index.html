@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gestione Cantieri e Personale</title>
+  <title>Gestione Cantieri e Personale – v2</title>
   <style>
     body{font-family:Arial,sans-serif;background:#f9f9f9;margin:20px;}
     h1,h2,h3{color:#2c3e50;}
@@ -33,7 +33,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Gestione Cantieri e Personale</h1>
+    <h1>Gestione Cantieri e Personale – v2</h1>
     <div class="tabs">
       <div class="tab active" data-tab="cantieri">Cantieri</div>
       <div class="tab" data-tab="personale">Personale</div>
@@ -47,7 +47,10 @@
       <input id="filterCantieri" class="filter-input" placeholder="🔍 Cerca cantieri..." />
       <input id="nomeCantiere" placeholder="Inserisci nome cantiere" />
       <button id="btnSaveCant">Salva</button>
-      <table><thead><tr><th>Nome</th><th>Azioni</th></tr></thead><tbody id="tbodyCantieri"></tbody></table>
+      <table>
+        <thead><tr><th>Cantiere</th><th>Revision</th><th>Data</th><th>Dipendenti</th><th>Note</th><th>Azioni</th></tr></thead>
+        <tbody id="tbodyCantieri"></tbody>
+      </table>
     </div>
 
     <!-- PERSONALE -->
@@ -75,8 +78,10 @@
       <button id="btnAddPlan">Assegna</button>
 
       <h3>📅 Interventi nella data selezionata</h3>
-      <table><thead><tr><th>Cantiere</th><th>Dipendenti</th><th>Note</th></tr></thead>
-      <tbody id="dailyPreviewBody"></tbody></table>
+      <table>
+        <thead><tr><th>Cantiere</th><th>Dipendenti</th><th>Note</th></tr></thead>
+        <tbody id="dailyPreviewBody"></tbody>
+      </table>
 
       <table>
         <thead><tr><th>Data</th><th>Cantiere</th><th>Dipendenti</th><th>Note</th><th>Azioni</th></tr></thead>
@@ -98,6 +103,7 @@
 
   <script>
   (() => {
+    const VERSION = 2;
     const firebaseConfig = {
       apiKey: "AIzaSyCuuDAmZeR0TV7FZHt8uK4LQRrfCyGMtNA",
       authDomain: "gestione-cantieri-5c820.firebaseapp.com",
@@ -117,57 +123,88 @@
         document.getElementById(tab.dataset.tab).classList.add('active');
         if(tab.dataset.tab==='pianificazione'){ initPlan(); }
         if(tab.dataset.tab==='annuale'){ renderAnnual(); }
+        if(tab.dataset.tab==='cantieri'){ renderCantieri(); }
       };
     });
 
     async function caricaDati(){
-      [cantieri,persone,piani]=await Promise.all([
-        db.collection('cantieri').get().then(s=>s.docs.map(d=>({id:d.id,nome:d.data().nome}))),
+      [cantieri,persone,piani] = await Promise.all([
+        db.collection('cantieri').get().then(s=>s.docs.map(d=>({id:d.id,...d.data()}))),
         db.collection('persone').get().then(s=>s.docs.map(d=>({id:d.id,...d.data()}))),
         db.collection('piani').get().then(s=>s.docs.map(d=>({id:d.id,...d.data()})))
       ]);
       renderCantieri(); renderPers(); renderPlan(); renderAnnual(); initPlan();
     }
 
-    // Cantieri
+    // Cantieri + piani raggruppati
     document.getElementById('btnSaveCant').onclick=async()=>{
       const nome=document.getElementById('nomeCantiere').value.trim();
-      if(!nome)return alert('Inserisci nome cantiere');
+      if(!nome) return alert('Inserisci nome cantiere');
       if(editCant){
         await db.collection('cantieri').doc(editCant).update({nome});
         editCant=null;
         document.getElementById('btnSaveCant').textContent='Salva';
       } else {
-        if(cantieri.some(c=>c.nome===nome))return alert('Cantiere esistente');
+        if(cantieri.some(c=>c.nome===nome)) return alert('Cantiere esistente');
         await db.collection('cantieri').add({nome});
       }
       document.getElementById('nomeCantiere').value='';
       caricaDati();
     };
     document.getElementById('filterCantieri').oninput=renderCantieri;
+
     function renderCantieri(){
-      const t=document.getElementById('tbodyCantieri');
-      const f=document.getElementById('filterCantieri').value.toLowerCase();
-      t.innerHTML='';
+      const f = document.getElementById('filterCantieri').value.toLowerCase();
+      const t = document.getElementById('tbodyCantieri');
+      t.innerHTML = '';
       cantieri.filter(c=>c.nome.toLowerCase().includes(f)).forEach(c=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${c.nome}</td><td>
-          <button class="btn-edit">Modifica</button>
-          <button class="btn-delete">Cancella</button>
-        </td>`;
-        tr.querySelector('.btn-edit').onclick=()=>{
-          editCant=c.id;
-          document.getElementById('nomeCantiere').value=c.nome;
-          document.getElementById('btnSaveCant').textContent='Aggiorna';
-        };
-        tr.querySelector('.btn-delete').onclick=async()=>{
-          if(!confirm('Confermi eliminazione?'))return;
-          await db.collection('cantieri').doc(c.id).delete();
-          const s=await db.collection('piani').where('c','==',c.nome).get();
-          s.docs.forEach(doc=>doc.ref.delete());
-          caricaDati();
-        };
-        t.appendChild(tr);
+        const pianiCant = piani.filter(p=>p.c === c.nome);
+        if(pianiCant.length){
+          pianiCant.sort((a,b)=>a.d.localeCompare(b.d)).forEach((p, i)=>{
+            const dip = p.p.map(id=>{
+              const per = persone.find(x=>x.id===id);
+              return per ? `${per.n} ${per.c}` : '';
+            }).join(', ');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${i===0?c.nome:''}</td>
+              <td>${i===0?VERSION:''}</td>
+              <td>${p.d}</td>
+              <td>${dip}</td>
+              <td>${p.n||''}</td>
+              <td>
+                <button class="btn-edit">Modifica</button>
+                <button class="btn-delete">Cancella</button>
+              </td>`;
+            tr.querySelector('.btn-edit').onclick = ()=>{
+              document.querySelector('.tab[data-tab="pianificazione"]').click();
+              setTimeout(()=>{
+                document.getElementById('dataPlan').value = p.d;
+                initPlan();
+                document.getElementById('selectCantiere').value = p.c;
+                document.getElementById('notePlan').value = p.n||'';
+                const e = piani.find(x=>x.id===p.id);
+                editPlan = e;
+                updateAvailablePers();
+                [...document.getElementById('selectPers').options].forEach(o=>o.selected = p.p.includes(o.value));
+                document.getElementById('btnAddPlan').textContent = 'Aggiorna';
+                renderDailyPreview(p.d);
+              }, 100);
+            };
+            tr.querySelector('.btn-delete').onclick = async ()=>{
+              if(confirm('Elimina intervento?')){
+                await db.collection('piani').doc(p.id).delete();
+                caricaDati();
+              }
+            };
+            t.appendChild(tr);
+          });
+        } else {
+          // cantiere senza interventi
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${c.nome}</td><td>${VERSION}</td><td>—</td><td>—</td><td>—</td><td>—</td>`;
+          t.appendChild(tr);
+        }
       });
     }
 
@@ -175,7 +212,7 @@
     document.getElementById('btnSavePers').onclick=async()=>{
       const n=document.getElementById('nomePersona').value.trim(),
             c=document.getElementById('cognomePersona').value.trim();
-      if(!n||!c)return alert('Inserisci nome e cognome');
+      if(!n||!c) return alert('Inserisci nome e cognome');
       const m=document.getElementById('mansionePersona').value.trim(),
             note=document.getElementById('notePersona').value.trim();
       if(editPers){
@@ -183,7 +220,7 @@
         editPers=null;
         document.getElementById('btnSavePers').textContent='Salva';
       } else {
-        if(persone.some(p=>p.n===n&&p.c===c))return alert('Persona esistente');
+        if(persone.some(p=>p.n===n&&p.c===c)) return alert('Persona esistente');
         await db.collection('persone').add({n,c,m,note});
       }
       ['nomePersona','cognomePersona','mansionePersona','notePersona'].forEach(id=>document.getElementById(id).value='');
@@ -191,29 +228,32 @@
     };
     document.getElementById('filterPers').oninput=renderPers;
     function renderPers(){
-      const t=document.getElementById('tbodyPers'),
-            f=document.getElementById('filterPers').value.toLowerCase();
-      t.innerHTML='';
-      persone.filter(p=>`${p.n} ${p.c} ${p.m}`.toLowerCase().includes(f))
-      .forEach(p=>{
+      const f=document.getElementById('filterPers').value.toLowerCase();
+      const t=document.getElementById('tbodyPers');
+      t.innerHTML = '';
+      persone.filter(p=>`${p.n} ${p.c} ${p.m}`.toLowerCase().includes(f)).forEach(p=>{
         const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${p.n}</td><td>${p.c}</td><td>${p.m}</td><td>${p.note}</td><td>
+        tr.innerHTML = `<td>${p.n}</td><td>${p.c}</td><td>${p.m}</td><td>${p.note}</td><td>
           <button class="btn-edit">Modifica</button>
           <button class="btn-delete">Cancella</button>
         </td>`;
         tr.querySelector('.btn-edit').onclick=()=>{
           editPers=p.id;
-          ['nomePersona','cognomePersona','mansionePersona','notePersona'].forEach(f=>{
-            document.getElementById(f).value=p[f.charAt(0)];
-          });
+          document.getElementById('nomePersona').value=p.n;
+          document.getElementById('cognomePersona').value=p.c;
+          document.getElementById('mansionePersona').value=p.m;
+          document.getElementById('notePersona').value=p.note;
           document.getElementById('btnSavePers').textContent='Aggiorna';
         };
         tr.querySelector('.btn-delete').onclick=async()=>{
-          if(!confirm('Confermi eliminazione?'))return;
-          await db.collection('persone').doc(p.id).delete();
-          const s=await db.collection('piani').get();
-          s.docs.forEach(doc=>{ if(doc.data().p.includes(p.id))doc.ref.delete(); });
-          caricaDati();
+          if(confirm('Elimina persona?')){
+            await db.collection('persone').doc(p.id).delete();
+            const s=await db.collection('piani').get();
+            s.docs.forEach(doc=>{
+              if(doc.data().p.includes(p.id)) doc.ref.delete();
+            });
+            caricaDati();
+          }
         };
         t.appendChild(tr);
       });
@@ -221,74 +261,73 @@
 
     // Pianificazione
     function initPlan(){
-      document.getElementById('selectCantiere').innerHTML=
-        '<option disabled selected value="">Seleziona cantiere</option>'+
+      document.getElementById('selectCantiere').innerHTML =
+        '<option disabled selected value="">Seleziona cantiere</option>' +
         cantieri.map(c=>`<option>${c.nome}</option>`).join('');
-      document.getElementById('selectPers').innerHTML='';
-      document.getElementById('notePlan').value='';
-      document.getElementById('dataPlan').value='';
-      document.getElementById('dailyPreviewBody').innerHTML='';
-      editPlan=null;
-      document.getElementById('btnAddPlan').textContent='Assegna';
+      document.getElementById('selectPers').innerHTML = '';
+      document.getElementById('notePlan').value = '';
+      document.getElementById('dataPlan').value = '';
+      document.getElementById('dailyPreviewBody').innerHTML = '';
+      editPlan = null;
+      document.getElementById('btnAddPlan').textContent = 'Assegna';
     }
-
-    document.getElementById('dataPlan').onchange=()=>{
+    document.getElementById('dataPlan').onchange = () => {
       updateAvailablePers();
       renderDailyPreview(document.getElementById('dataPlan').value);
     };
-
     function updateAvailablePers(){
-      const d=document.getElementById('dataPlan').value,
-            sel=document.getElementById('selectPers');
-      sel.innerHTML=''; if(!d)return;
-      const used=new Set(piani.filter(p=>p.d===d).flatMap(p=>p.p));
-      sel.innerHTML=persone.filter(p=>!used.has(p.id))
+      const d = document.getElementById('dataPlan').value;
+      const sel = document.getElementById('selectPers');
+      sel.innerHTML = '';
+      if(!d) return;
+      const used = new Set(piani.filter(p=>p.d===d).flatMap(p=>p.p));
+      sel.innerHTML = persone.filter(p=>!used.has(p.id))
         .map(p=>`<option value="${p.id}">${p.n} ${p.c}</option>`).join('');
     }
-
     function renderDailyPreview(dateStr){
-      const t=document.getElementById('dailyPreviewBody');
-      t.innerHTML='';
-      if(!dateStr)return;
+      const t = document.getElementById('dailyPreviewBody');
+      t.innerHTML = '';
+      if(!dateStr) return;
       piani.filter(p=>p.d===dateStr).forEach(p=>{
-        const dip=p.p.map(id=>{
+        const dip = p.p.map(id=>{
           const per=persone.find(x=>x.id===id);
           return per?`${per.n} ${per.c}`:'';
         }).join(', ');
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td>`;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td>`;
         t.appendChild(tr);
       });
     }
-
     document.getElementById('btnAddPlan').onclick=async()=>{
-      const d=document.getElementById('dataPlan').value,
-            c=document.getElementById('selectCantiere').value,
-            sel=[...document.getElementById('selectPers').selectedOptions].map(o=>o.value),
-            note=document.getElementById('notePlan').value.trim();
-      if(!d||!c||sel.length===0)return alert('Completa tutti i campi');
+      const d=document.getElementById('dataPlan').value;
+      const c=document.getElementById('selectCantiere').value;
+      const sel=[...document.getElementById('selectPers').selectedOptions].map(o=>o.value);
+      const note=document.getElementById('notePlan').value.trim();
+      if(!d||!c||sel.length===0) return alert('Completa tutti i campi');
       if(editPlan){
-        await db.collection('piani').doc(editPlan.id).update({d,c,p:sel,note});
-      }else await db.collection('piani').add({d,c,p:sel,n:note});
+        await db.collection('piani').doc(editPlan.id).update({d,c,p:sel,n:note});
+      } else {
+        await db.collection('piani').add({d,c,p:sel,n:note});
+      }
       initPlan(); caricaDati();
     };
-
     function renderPlan(){
       const t=document.getElementById('tbodyPlan');
-      t.innerHTML='';
+      t.innerHTML = '';
       piani.sort((a,b)=>a.d.localeCompare(b.d)).forEach(p=>{
-        const dip=p.p.map(id=>{
-          const per=persone.find(x=>x.id===id);
+        const dip = p.p.map(id=>{
+          const per = persone.find(x=>x.id===id);
           return per?`${per.n} ${per.c}`:'';
         }).join(', ');
         const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${p.d}</td><td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td><td>
+        tr.innerHTML = `<td>${p.d}</td><td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td><td>
           <button class="btn-edit">Modifica</button>
           <button class="btn-delete">Cancella</button>
         </td>`;
         tr.querySelector('.btn-edit').onclick=()=>{
           editPlan=p;
           document.getElementById('dataPlan').value=p.d;
+          initPlan();
           document.getElementById('selectCantiere').value=p.c;
           document.getElementById('notePlan').value=p.n||'';
           updateAvailablePers();
@@ -297,7 +336,7 @@
           renderDailyPreview(p.d);
         };
         tr.querySelector('.btn-delete').onclick=async()=>{
-          if(confirm("Elimina intervento?")){
+          if(confirm('Elimina intervento?')){
             await db.collection('piani').doc(p.id).delete();
             initPlan(); caricaDati();
           }
@@ -309,41 +348,32 @@
     // Annuale
     document.getElementById('numWeekSelect').onchange=renderAnnual;
     document.getElementById('yearSelect').onchange=renderAnnual;
-
     function renderAnnual(){
-      const w=+document.getElementById('numWeekSelect').value,
-            y=+document.getElementById('yearSelect').value,
-            start=getDateOfISOWeek(w,y),
-            tbody=document.getElementById('tbodyAnnual');
-      tbody.innerHTML='';
+      const w=+document.getElementById('numWeekSelect').value;
+      const y=+document.getElementById('yearSelect').value;
+      const start=getDateOfISOWeek(w,y);
+      const tbody=document.getElementById('tbodyAnnual');
+      tbody.innerHTML = '';
       for(let i=0;i<7;i++){
-        const d=new Date(start);
-        d.setDate(d.getDate()+i);
+        const d=new Date(start); d.setDate(d.getDate()+i);
         const iso=d.toISOString().split('T')[0];
         piani.filter(p=>p.d===iso).forEach(p=>{
-          const dip=p.p.map(id=>{
-            const per=persone.find(x=>x.id===id);
+          const dip = p.p.map(id=>{
+            const per = persone.find(x=>x.id===id);
             return per?`${per.n} ${per.c}`:'';
           }).join(', ');
           const tr=document.createElement('tr');
-          tr.innerHTML=`<td>${iso}</td><td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td>`;
+          tr.innerHTML = `<td>${iso}</td><td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td>`;
           tbody.appendChild(tr);
         });
       }
     }
 
-    // Helper ISO
-    function getISOWeek(date){
-      const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())),
-            dayNum=d.getUTCDay()||7;
-      d.setUTCDate(d.getUTCDate()+4-dayNum);
-      const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
-      return Math.ceil((((d-yearStart)/86400000)+1)/7);
-    }
+    // Helpers
     function getDateOfISOWeek(w,y){
-      const simple=new Date(y,0,(w-1)*7+1),
-            dow=simple.getDay(),
-            ISOweekStart=new Date(simple);
+      const simple=new Date(y,0,(w-1)*7+1);
+      const dow=simple.getDay();
+      const ISOweekStart=new Date(simple);
       if(dow<=4) ISOweekStart.setDate(simple.getDate()-simple.getDay()+1);
       else ISOweekStart.setDate(simple.getDate()+8-simple.getDay());
       return ISOweekStart;
