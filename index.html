@@ -32,6 +32,7 @@
     .btn-delete { background: #e74c3c; }
     .btn-action:hover { opacity: 0.9; }
     .week-display { font-style: italic; margin-top: 6px; }
+    select:invalid { color: gray; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -39,7 +40,7 @@
 <body>
 <div class="container">
   <h1>Gestione Cantieri e Personale</h1>
-  <div class="version">Versione 1</div>
+  <div class="version">Versione 2</div>
   <div class="tabs">
     <div class="tab active" data-tab="cantieri">Cantieri</div>
     <div class="tab" data-tab="personale">Personale</div>
@@ -96,7 +97,9 @@
     <input type="date" id="dataPlan">
     <div id="weekDisplay" class="week-display"></div>
     <label>Cantiere</label>
-    <select id="selectCantiere"></select>
+    <select id="selectCantiere" required>
+      <option value="" selected disabled>Scegli un cantiere</option>
+    </select>
     <label>Dipendenti</label>
     <select id="selectPers" multiple></select>
     <label>Note</label>
@@ -142,10 +145,13 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>switchTab(t.dataset.t
 // date week
 function isoWeek(d) { const dt=new Date(d); const day=dt.getDay()||7; dt.setDate(dt.getDate()+4-day); const ys=new Date(dt.getFullYear(),0,1); return Math.ceil((((dt-ys)/86400000)+1)/7); }
 
-document.getElementById('dataPlan').onchange=e=>{
-  const v=e.target.value; document.getElementById('weekDisplay').textContent=v?('Settimana ISO: '+isoWeek(v)):'';
-  if (window.piani && window.persone) renderPianificazione();
-};
+document.getElementById('dataPlan').addEventListener('change', function(e){
+  const v=e.target.value; 
+  document.getElementById('weekDisplay').textContent = v ? ('Settimana ISO: '+isoWeek(v)) : '';
+  if (window.piani && window.persone) {
+    renderPianificazione();
+  }
+});
 
 // Caricamento iniziale
 async function loadAll() {
@@ -214,8 +220,13 @@ document.getElementById('btnSavePers').onclick=async()=>{
 
 // Popola select in Pianificazione
 function populateSelects() {
-  const sc=document.getElementById('selectCantiere'); sc.innerHTML=''; cantieri.forEach(c=>sc.innerHTML+=`<option>${c}</option>`);
-  const sp=document.getElementById('selectPers'); sp.innerHTML=''; persone.forEach(p=>sp.innerHTML+=`<option value="${p.id}">${p.n} ${p.c}</option>`);
+  const sc=document.getElementById('selectCantiere'); 
+  sc.innerHTML='<option value="" selected disabled>Scegli un cantiere</option>'; 
+  cantieri.forEach(c=>sc.innerHTML+=`<option>${c}</option>`);
+  
+  const sp=document.getElementById('selectPers'); 
+  sp.innerHTML=''; 
+  persone.forEach(p=>sp.innerHTML+=`<option value="${p.id}">${p.n} ${p.c}</option>`);
 }
 
 // render Pianificazione
@@ -225,27 +236,31 @@ function renderPianificazione() {
   tbody.innerHTML = '';
   
   const dataSelezionata = document.getElementById('dataPlan').value;
+  if (!dataSelezionata) return;
+  
   const dipendentiOccupati = new Set();
   
+  // Prima passata: trova tutti i dipendenti occupati per questa data
   piani.forEach(pl => {
     if (pl.d === dataSelezionata) {
       pl.p.forEach(id => dipendentiOccupati.add(id));
+      
+      // Visualizza gli interventi esistenti per questa data
+      const persNames = pl.p.map(id => {
+        const x = persone.find(q => q.id === id);
+        return x ? x.n + ' ' + x.c : '';
+      }).join(', ');
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${pl.d}</td><td>${pl.c}</td><td>${persNames}</td><td>${pl.n||''}</td><td>
+        <button class="btn-action btn-edit" onclick="editPlan('${pl.id}')">Modifica</button>
+        <button class="btn-action btn-delete" onclick="delPlan('${pl.id}')">Cancella</button>
+      </td>`;
+      tbody.appendChild(tr);
     }
-    
-    const persNames = pl.p.map(id => {
-      const x = persone.find(q => q.id === id);
-      return x ? x.n + ' ' + x.c : '';
-    }).join(', ');
-    
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${pl.d}</td><td>${pl.c}</td><td>${persNames}</td><td>${pl.n||''}</td><td>
-      <button class="btn-action btn-edit" onclick="editPlan('${pl.id}')">Modifica</button>
-      <button class="btn-action btn-delete" onclick="delPlan('${pl.id}')">Cancella</button>
-    </td>`;
-    tbody.appendChild(tr);
   });
 
-  // Nascondi i dipendenti già occupati
+  // Nascondi i dipendenti già occupati per questa data
   const selectPers = document.getElementById('selectPers');
   Array.from(selectPers.options).forEach(option => {
     option.hidden = dipendentiOccupati.has(option.value);
@@ -258,7 +273,13 @@ window.editPlan=id=>{
     document.getElementById('dataPlan').value=pl.d; 
     document.getElementById('selectCantiere').value=pl.c; 
     document.getElementById('notePlan').value=pl.n||''; 
-    Array.from(document.getElementById('selectPers').options).forEach(o=>o.selected=pl.p.includes(o.value)); 
+    
+    // Seleziona i dipendenti assegnati
+    Array.from(document.getElementById('selectPers').options).forEach(o=>{
+      o.selected = pl.p.includes(o.value);
+      o.hidden = false; // Mostra tutti i dipendenti durante la modifica
+    });
+    
     renderPianificazione();
   }
 };
@@ -275,9 +296,19 @@ document.getElementById('btnAddPlan').onclick=async()=>{
   const c=document.getElementById('selectCantiere').value;
   const p=Array.from(document.getElementById('selectPers').selectedOptions).map(o=>o.value);
   const n=document.getElementById('notePlan').value.trim();
-  if(!d||!c||p.length===0)return;
+  
+  if(!d || !c || p.length===0) {
+    alert("Compila tutti i campi obbligatori!");
+    return;
+  }
+  
   await db.collection('piani').add({d,c,p,n}); 
   loadAll();
+  
+  // Reset form
+  document.getElementById('selectCantiere').value = '';
+  document.getElementById('notePlan').value = '';
+  Array.from(document.getElementById('selectPers').options).forEach(o => o.selected = false);
 };
 
 // Anteprima annuale
