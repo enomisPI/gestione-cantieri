@@ -1,40 +1,37 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gestione Cantieri e Personale - con Firebase (v4)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestione Cantieri e Personale - Firebase</title>
   <style>
-    body { font-family: Arial, sans-serif; background:#f9f9f9; margin:20px; }
-    h1,h2 { color:#2c3e50; }
-    .version { font-size:0.9em; color:#7f8c8d; margin-bottom:10px; }
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 20px; }
+    h1, h2 { color: #2c3e50; }
+    .version { font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px; }
     .container { max-width: 1100px; margin: auto; }
-    .tabs { display: flex; gap:10px; margin-bottom: 20px; }
-    .tab { background:#34495e; color:#fff; padding:10px 20px; border-radius: 4px 4px 0 0; cursor: pointer; user-select:none; }
-    .tab.active { background:#2c3e50; font-weight:bold; }
-    .content { background:#fff; padding:20px; border-radius: 0 4px 4px 4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); display:none; overflow-x:auto; }
-    .content.active { display:block; }
-    .search-bar { margin-bottom:15px; }
-    .search-bar input { padding:6px; width:200px; box-sizing:border-box; color:#7f8c8d; }
-    .search-bar button { padding:6px 14px; border:none; background:#16a085; color:#fff; border-radius:4px; cursor:pointer; margin-left:5px; }
-    .search-bar button:hover { background:#138f75; }
-    label { font-weight:bold; margin-top:10px; display:block; }
-    input, select, textarea { width: 100%; padding:6px; margin-top:4px; box-sizing: border-box; color:#2c3e50; }
-    input::placeholder, textarea::placeholder { color: #7f8c8d; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab { background: #34495e; color: #fff; padding: 10px 20px; border-radius: 4px 4px 0 0; cursor: pointer; }
+    .tab.active { background: #2c3e50; font-weight: bold; }
+    .content { display: none; background: #fff; padding: 20px; border-radius: 0 4px 4px 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .content.active { display: block; }
+    .search-bar { margin-bottom: 15px; display: flex; gap: 5px; }
+    .search-bar input { padding: 6px; flex: 1; color: #7f8c8d; }
+    .search-bar button { padding: 6px 12px; border: none; background: #16a085; color: #fff; cursor: pointer; }
+    .search-bar button:hover { background: #138f75; }
+    label { font-weight: bold; margin-top: 10px; display: block; }
+    input, select, textarea, button.primary { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; color: #2c3e50; }
     textarea { resize: vertical; }
-    select[multiple] { height: 130px; }
-    button { margin-top: 10px; padding: 6px 14px; border:none; background:#3498db; color:#fff; border-radius:4px; cursor:pointer; }
-    button:hover { background:#2980b9; }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; vertical-align: top; word-wrap: break-word; }
-    th { background:#34495e; color:#fff; }
-    .btn-edit, .btn-delete { border:none; padding:5px 10px; border-radius:3px; color:#fff; cursor:pointer; }
-    .btn-edit { background:#27ae60; margin-right:5px; }
-    .btn-edit:hover { background:#1e8449; }
-    .btn-delete { background:#e74c3c; }
-    .btn-delete:hover { background:#c0392b; }
+    select[multiple] { height: 120px; }
+    button.primary { background: #3498db; border: none; color: #fff; cursor: pointer; }
+    button.primary:hover { background: #2980b9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #34495e; color: #fff; }
+    .btn-action { margin: 0 2px; padding: 4px 8px; border: none; border-radius: 3px; color: #fff; cursor: pointer; }
+    .btn-edit { background: #27ae60; }
+    .btn-delete { background: #e74c3c; }
+    .btn-action:hover { opacity: 0.9; }
     .week-display { font-style: italic; margin-top: 6px; }
-    @media (max-width: 700px) { .tabs { flex-wrap: wrap; } }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -42,137 +39,200 @@
 <body>
 <div class="container">
   <h1>Gestione Cantieri e Personale</h1>
-  <div class="version">Versione 4</div>
+  <div class="version">Versione 1</div>
   <div class="tabs">
     <div class="tab active" data-tab="cantieri">Cantieri</div>
     <div class="tab" data-tab="personale">Personale</div>
     <div class="tab" data-tab="pianificazione">Pianificazione</div>
     <div class="tab" data-tab="annuale">Anteprima Annuale</div>
   </div>
+
   <!-- Cantieri -->
   <div id="cantieri" class="content active">
     <h2>Cantieri</h2>
     <div class="search-bar">
-      <input type="text" id="searchCant" placeholder="Cerca cantiere..." />
+      <input type="text" id="searchCant" placeholder="Cerca cantiere...">
       <button id="btnSearchCant">Cerca</button>
     </div>
-    <label for="nomeCantiere">Nome cantiere</label>
-    <input id="nomeCantiere" placeholder="Inserisci nome cantiere" />
-    <button id="btnSaveCant">Salva</button>
-    <table id="tableCantieri">
+    <label>Nome cantiere</label>
+    <input id="nomeCantiere" placeholder="Inserisci nome cantiere">
+    <button id="btnSaveCant" class="primary">Salva</button>
+    <table>
       <thead><tr><th>Nome</th><th>Azioni</th></tr></thead>
-      <tbody></tbody>
+      <tbody id="tbodyCantieri"></tbody>
     </table>
   </div>
+
   <!-- Personale -->
   <div id="personale" class="content">
     <h2>Personale</h2>
     <div class="search-bar">
-      <input type="text" id="searchPers" placeholder="Cerca per nome, cognome o mansione..." />
+      <input type="text" id="searchPers" placeholder="Cerca per nome, cognome o mansione...">
       <button id="btnSearchPers">Cerca</button>
     </div>
-    <label for="nomePersona">Nome</label>
-    <input id="nomePersona" placeholder="Nome" />
-    <label for="cognomePersona">Cognome</label>
-    <input id="cognomePersona" placeholder="Cognome" />
-    <label for="mansionePersona">Mansione</label>
-    <input id="mansionePersona" placeholder="Mansione" />
-    <label for="notePersona">Note</label>
-    <textarea id="notePersona" rows="2" placeholder="Note su persona (opzionale)"></textarea>
-    <button id="btnSavePers">Salva</button>
-    <table id="tablePersonale">
+    <label>Nome</label>
+    <input id="nomePersona" placeholder="Nome">
+    <label>Cognome</label>
+    <input id="cognomePersona" placeholder="Cognome">
+    <label>Mansione</label>
+    <input id="mansionePersona" placeholder="Mansione">
+    <label>Note</label>
+    <textarea id="notePersona" placeholder="Note (opzionale)"></textarea>
+    <button id="btnSavePers" class="primary">Salva</button>
+    <table>
       <thead><tr><th>Nome</th><th>Cognome</th><th>Mansione</th><th>Note</th><th>Azioni</th></tr></thead>
-      <tbody></tbody>
+      <tbody id="tbodyPers"></tbody>
     </table>
   </div>
+
   <!-- Pianificazione -->
   <div id="pianificazione" class="content">
     <h2>Pianificazione</h2>
     <div class="search-bar">
-      <input type="text" id="searchPlan" placeholder="Cerca per data o cantiere..." />
+      <input type="text" id="searchPlan" placeholder="Cerca data o cantiere...">
       <button id="btnSearchPlan">Cerca</button>
     </div>
-    <label for="dataPlan">Data intervento</label>
-    <input type="date" id="dataPlan" />
-    <div class="week-display" id="weekDisplay"></div>
-    <label for="selectCantiere">Cantiere</label>
-    <select id="selectCantiere"><option value="">-- Seleziona cantiere --</option></select>
-    <label for="selectPers">Dipendenti</label>
+    <label>Data intervento</label>
+    <input type="date" id="dataPlan">
+    <div id="weekDisplay" class="week-display"></div>
+    <label>Cantiere</label>
+    <select id="selectCantiere"></select>
+    <label>Dipendenti</label>
     <select id="selectPers" multiple></select>
-    <label for="notePlan">Note</label>
-    <textarea id="notePlan" rows="2" placeholder="Note intervento (opzionale)"></textarea>
-    <button id="btnAddPlan">Assegna</button>
-    <table id="tablePlan">
-      <thead><tr><th>Data</th><!-- dinamiche --> <th>Azioni</th></tr></thead>
-      <tbody></tbody>
+    <label>Note</label>
+    <textarea id="notePlan" placeholder="Note (opzionale)"></textarea>
+    <button id="btnAddPlan" class="primary">Assegna</button>
+    <table>
+      <thead><tr><th>Data</th><th>Cantiere</th><th>Dipendenti</th><th>Note</th><th>Azioni</th></tr></thead>
+      <tbody id="tbodyPlan"></tbody>
     </table>
-    <button id="btnExportSettimana" style="margin-top: 10px;">Esporta pianificazione settimanale</button>
   </div>
+
   <!-- Anteprima Annuale -->
   <div id="annuale" class="content">
     <h2>Anteprima Annuale</h2>
-    <div class="search-bar">
-      <input type="text" id="searchAnnual" placeholder="Cerca settimana o anno..." />
-      <button id="btnSearchAnnual">Cerca</button>
-    </div>
-    <label for="numWeekSelect">Settimana #</label>
-    <input type="number" id="numWeekSelect" min="1" max="54" value="1" />
-    <label for="yearSelect">Anno</label>
-    <input type="number" id="yearSelect" min="2000" max="2100" value="2025" />
-    <table id="tableAnnual">
-      <thead><tr><th>Data</th><!-- dinamiche --></tr></thead>
-      <tbody></tbody>
+    <label>Settimana #</label>
+    <input type="number" id="numWeek" min="1" max="54" value="1">
+    <label>Anno</label>
+    <input type="number" id="yearSel" min="2000" max="2100" value="2025">
+    <button id="btnShowAnnual" class="primary">Mostra</button>
+    <table>
+      <thead><tr><th>Data</th><th>Cantiere</th><th>Dipendenti</th><th>Note</th></tr></thead>
+      <tbody id="tbodyAnnual"></tbody>
     </table>
-    <button id="btnExportAnnual" style="margin-top:10px;">Esporta settimana</button>
   </div>
 </div>
+
 <script>
-(() => {
-  const config = { apiKey:"...",authDomain:"...",projectId:"...",storageBucket:"...",messagingSenderId:"...",appId:"..."};
-  firebase.initializeApp(config);
-  const db = firebase.firestore();
-  let cantieri=[], persone=[], piani=[];
-  const tabs=document.querySelectorAll('.tab'), contents=document.querySelectorAll('.content');
-  tabs.forEach(t=>t.onclick=()=>{
-    tabs.forEach(x=>x.classList.remove('active'));
-    contents.forEach(c=>c.classList.remove('active'));
-    t.classList.add('active');
-    document.getElementById(t.dataset.tab).classList.add('active');
-    if(t.dataset.tab==='pianificazione') initPlan();
-    if(t.dataset.tab==='annuale') renderAnnual();
+// Config Firebase
+firebase.initializeApp({
+  apiKey: "AIzaSyCuuDA…FWL",
+  authDomain: "gestione-cantieri-5c820.firebaseapp.com",
+  projectId: "gestione-cantieri-5c820"
+});
+const db = firebase.firestore();
+
+// utility
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.content').forEach(c=>c.classList.toggle('active', c.id===name));
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+
+// date week
+function isoWeek(d) { const dt=new Date(d); const day=dt.getDay()||7; dt.setDate(dt.getDate()+4-day); const ys=new Date(dt.getFullYear(),0,1); return Math.ceil((((dt-ys)/86400000)+1)/7); }
+
+document.getElementById('dataPlan').onchange=e=>{
+  const v=e.target.value; document.getElementById('weekDisplay').textContent=v?('Settimana ISO: '+isoWeek(v)):'';
+};
+
+// Caricamento iniziale
+async function loadAll() {
+  const c=await db.collection('cantieri').get(); window.cantieri=c.docs.map(d=>d.data().nome);
+  const p=await db.collection('persone').get(); window.persone=p.docs.map(d=>({id:d.id,...d.data()}));
+  const pl=await db.collection('piani').get(); window.piani=pl.docs.map(d=>({id:d.id,...d.data()}));
+  renderCantieri(); renderPersonale(); renderPianificazione();
+}
+
+// render Cantieri
+function renderCantieri() {
+  const tbody=document.getElementById('tbodyCantieri'); tbody.innerHTML='';
+  cantieri.forEach(nome=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${nome}</td><td>
+      <button class="btn-action btn-edit" onclick="editCantiere('${nome}')">Modifica</button>
+      <button class="btn-action btn-delete" onclick="delCantiere('${nome}')">Cancella</button>
+    </td>`;
+    tbody.appendChild(tr);
   });
-  async function load(){
-    const cSnap=await db.collection('cantieri').get(); cantieri=cSnap.docs.map(d=>d.data().nome);
-    const pSnap=await db.collection('persone').get(); persone=pSnap.docs.map(d=>({id:d.id,...d.data()}));
-    const planSnap=await db.collection('piani').get(); piani=planSnap.docs.map(d=>({id:d.id,...d.data()}));
-    renderCant(), renderPers(), renderPlan(), renderAnnual();
-    populateCantieriSelect(), updatePlanLists();
-  }
-  // (Implementa salva/cancella e renderCant/renderPers come prima)
-  function renderPlan(){
-    const used=Array.from(new Set(piani.map(p=>p.c)));
-    const head=document.querySelector('#tablePlan thead tr'); head.innerHTML='<th>Data</th>'+used.map(c=>`<th>${c}</th>`).join('')+'<th>Azioni</th>';
-    const body=document.querySelector('#tablePlan tbody'); body.innerHTML='';
-    const grp={}; piani.forEach(p=>{grp[p.d]=grp[p.d]||[];grp[p.d].push(p);});
-    Object.keys(grp).sort().forEach(d=>{
-      const tr=document.createElement('tr'); tr.innerHTML='<td>'+d+'</td>'+used.map(c=>{
-        const items=grp[d].filter(x=>x.c===c);
-        if(!items.length) return '<td></td>';
-        return '<td>'+items.map(x=>{
-          const names=x.p.map(id=>{const pp=persone.find(z=>z.id===id);return pp?pp.n+' '+pp.c:'?';}).join(', ');
-          return names+(x.n?` (${x.n})`:'')+'<br>';
-        }).join('')+'</td>';
-      }).join('')+'<td>'+
-      grp[d].map(x=>`<button class="btn-edit" data-id="${x.id}">Modifica</button><button class="btn-delete" data-id="${x.id}">Cancella</button>`).join('')+
-      '</td>';
-      body.appendChild(tr);
-    });
-    document.querySelectorAll('#tablePlan .btn-delete').forEach(b=>b.onclick=async()=>{if(confirm('Confermi?')){await db.collection('piani').doc(b.dataset.id).delete();load();}});
-    document.querySelectorAll('#tablePlan .btn-edit').forEach(b=>b.onclick=()=>alert('Modifica non implementata'));
-  }
-  function initPlan(){document.getElementById('dataPlan').value='';document.getElementById('weekDisplay').textContent='';populateCantieriSelect();updatePlanLists();}
-  load();
-})();
+}
+
+window.editCantiere=nome=>{ document.getElementById('nomeCantiere').value=nome; };
+window.delCantiere=async nome=>{ if(confirm('Elimina?')){ await db.collection('cantieri').doc(nome).delete(); loadAll(); }};
+
+document.getElementById('btnSaveCant').onclick=async()=>{
+  const n=document.getElementById('nomeCantiere').value.trim(); if(!n)return;
+  await db.collection('cantieri').doc(n).set({nome:n}); loadAll(); document.getElementById('nomeCantiere').value='';
+};
+
+// render Personale
+function renderPersonale() {
+  const tbody=document.getElementById('tbodyPers'); tbody.innerHTML='';
+  persone.forEach(p=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${p.n}</td><td>${p.c}</td><td>${p.m||''}</td><td>${p.note||''}</td><td>
+      <button class="btn-action btn-edit" onclick="editPers('${p.id}')">Modifica</button>
+      <button class="btn-action btn-delete" onclick="delPers('${p.id}')">Cancella</button>
+    </td>`;
+    tbody.appendChild(tr);
+  });
+}
+window.editPers=id=>{ const p=persone.find(x=>x.id===id); if(p){ document.getElementById('nomePersona').value=p.n; document.getElementById('cognomePersona').value=p.c; document.getElementById('mansionePersona').value=p.m; document.getElementById('notePersona').value=p.note; }};
+window.delPers=async id=>{ if(confirm('Elimina persona?')){ await db.collection('persone').doc(id).delete(); loadAll(); }};
+
+document.getElementById('btnSavePers').onclick=async()=>{
+  const n=document.getElementById('nomePersona').value.trim();
+  const c=document.getElementById('cognomePersona').value.trim();
+  if(!n||!c)return;
+  const m=document.getElementById('mansionePersona').value.trim();
+  const note=document.getElementById('notePersona').value.trim();
+  await db.collection('persone').add({n,c,m,note}); loadAll();
+};
+
+// Popola select in Pianificazione
+function populateSelects() {
+  const sc=document.getElementById('selectCantiere'); sc.innerHTML=''; cantieri.forEach(c=>sc.innerHTML+=`<option>${c}</option>`);
+  const sp=document.getElementById('selectPers'); sp.innerHTML=''; persone.forEach(p=>sp.innerHTML+=`<option value="${p.id}">${p.n} ${p.c}</option>`);
+}
+
+// render Pianificazione
+function renderPianificazione() {
+  populateSelects();
+  const tbody=document.getElementById('tbodyPlan'); tbody.innerHTML='';
+  piani.forEach(pl=>{
+    const persNames=pl.p.map(id=>{const x=persone.find(q=>q.id===id);return x?x.n+' '+x.c:'';}).join(', ');
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${pl.d}</td><td>${pl.c}</td><td>${persNames}</td><td>${pl.n||''}</td><td>
+      <button class="btn-action btn-edit" onclick="editPlan('${pl.id}')">Modifica</button>
+      <button class="btn-action btn-delete" onclick="delPlan('${pl.id}')">Cancella</button>
+    </td>`;
+    tbody.appendChild(tr);
+  });
+}
+window.editPlan=id=>{ const pl=piani.find(x=>x.id===id); if(pl){ document.getElementById('dataPlan').value=pl.d; document.getElementById('selectCantiere').value=pl.c; document.getElementById('notePlan').value=pl.n||''; Array.from(document.getElementById('selectPers').options).forEach(o=>o.selected=pl.p.includes(o.value)); }};
+window.delPlan=async id=>{ if(confirm('Elimina intervento?')){ await db.collection('piani').doc(id).delete(); loadAll(); }};
+
+document.getElementById('btnAddPlan').onclick=async()=>{
+  const d=document.getElementById('dataPlan').value;
+  const c=document.getElementById('selectCantiere').value;
+  const p=Array.from(document.getElementById('selectPers').selectedOptions).map(o=>o.value);
+  const n=document.getElementById('notePlan').value.trim();
+  if(!d||!c||p.length===0)return;
+  await db.collection('piani').add({d,c,p,n}); loadAll();
+};
+
+// Anteprima annuale
+window.onload=loadAll;
 </script>
 </body>
 </html>
