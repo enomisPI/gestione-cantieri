@@ -22,12 +22,12 @@
     input, select, textarea, button.primary { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; color: #2c3e50; }
     textarea { resize: vertical; }
     select[multiple] { height: 120px; }
-    button.primary { background: #3498db; border: none; color: #fff; cursor: pointer; }
+    button.primary { background: #3498db; border: none; color: #fff; cursor: pointer; width: auto; padding: 6px 12px; }
     button.primary:hover { background: #2980b9; }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     th { background: #34495e; color: #fff; }
-    .btn-action { margin: 0 2px; padding: 4px 8px; border: none; border-radius: 3px; color: #fff; cursor: pointer; }
+    .btn-action { margin: 0 2px; padding: 6px 12px; border: none; border-radius: 3px; color: #fff; cursor: pointer; }
     .btn-edit { background: #27ae60; }
     .btn-delete { background: #e74c3c; }
     .btn-action:hover { opacity: 0.9; }
@@ -56,7 +56,7 @@
     </div>
     <label>Nome cantiere</label>
     <input id="nomeCantiere" placeholder="Inserisci nome cantiere">
-    <button id="btnSaveCant" class="primary">Salva</button>
+    <button id="btnSaveCant" class="btn-action btn-edit">Salva</button>
     <table>
       <thead><tr><th>Nome</th><th>Azioni</th></tr></thead>
       <tbody id="tbodyCantieri"></tbody>
@@ -78,7 +78,7 @@
     <input id="mansionePersona" placeholder="Mansione">
     <label>Note</label>
     <textarea id="notePersona" placeholder="Note (opzionale)"></textarea>
-    <button id="btnSavePers" class="primary">Salva</button>
+    <button id="btnSavePers" class="btn-action btn-edit">Salva</button>
     <table>
       <thead><tr><th>Nome</th><th>Cognome</th><th>Mansione</th><th>Note</th><th>Azioni</th></tr></thead>
       <tbody id="tbodyPers"></tbody>
@@ -101,7 +101,7 @@
     <select id="selectPers" multiple></select>
     <label>Note</label>
     <textarea id="notePlan" placeholder="Note (opzionale)"></textarea>
-    <button id="btnAddPlan" class="primary">Assegna</button>
+    <button id="btnAddPlan" class="btn-action btn-edit">Assegna</button>
     <table>
       <thead><tr><th>Data</th><th>Cantiere</th><th>Dipendenti</th><th>Note</th><th>Azioni</th></tr></thead>
       <tbody id="tbodyPlan"></tbody>
@@ -187,6 +187,18 @@ function renderPersonale() {
     tbody.appendChild(tr);
   });
 }
+
+// Ricerca in tempo reale
+document.getElementById('searchPers').addEventListener('input', function() {
+  const searchTerm = this.value.toLowerCase();
+  const rows = document.querySelectorAll('#tbodyPers tr');
+  
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(searchTerm) ? '' : 'none';
+  });
+});
+
 window.editPers=id=>{ const p=persone.find(x=>x.id===id); if(p){ document.getElementById('nomePersona').value=p.n; document.getElementById('cognomePersona').value=p.c; document.getElementById('mansionePersona').value=p.m; document.getElementById('notePersona').value=p.note; }};
 window.delPers=async id=>{ if(confirm('Elimina persona?')){ await db.collection('persone').doc(id).delete(); loadAll(); }};
 
