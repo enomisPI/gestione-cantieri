@@ -34,7 +34,8 @@
     .week-display { font-style: italic; margin-top: 6px; }
     select:invalid { color: gray; }
     .error-message { color: #e74c3c; margin-top: 5px; }
-    .btn-remove { background: #f39c12; margin-left: 5px; padding: 2px 5px; font-size: 0.8em; }
+    .dipendente-item { margin: 3px 0; padding: 3px; background: #f0f0f0; border-radius: 3px; }
+    .remove-btn { background: #e74c3c; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; margin-left: 5px; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -42,7 +43,7 @@
 <body>
 <div class="container">
   <h1>Gestione Cantieri e Personale</h1>
-  <div class="version">Versione 4</div>
+  <div class="version">Versione 5</div>
   <div class="tabs">
     <div class="tab active" data-tab="cantieri">Cantieri</div>
     <div class="tab" data-tab="personale">Personale</div>
@@ -228,7 +229,7 @@ function renderPersonale() {
   });
 }
 
-// Ricerca in tempo reale
+// Ricerca in tempo real
 document.getElementById('searchPers').addEventListener('input', function() {
   const searchTerm = this.value.toLowerCase();
   const rows = document.querySelectorAll('#tbodyPers tr');
@@ -337,8 +338,8 @@ function renderPianificazione() {
   Object.values(pianiRaggruppati).forEach(pl => {
     const persNames = pl.p.map(id => {
       const x = persone.find(q => q.id === id);
-      return x ? `<div>${x.n} ${x.c} <button class="btn-remove" onclick="removeFromPlan('${pl.id}', '${id}')">X</button></div>` : '';
-    }).join('');
+      return x ? `${x.n} ${x.c}` : '';
+    }).join(', ');
     
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${pl.d}</td><td>${pl.c}</td><td>${persNames}</td><td>${pl.n || ''}</td><td>
@@ -354,6 +355,50 @@ function renderPianificazione() {
     option.hidden = dipendentiOccupati.has(option.value);
   });
 }
+
+window.editPlan = id => { 
+  const pl = piani.find(x => x.id === id); 
+  if(pl) { 
+    document.getElementById('dataPlan').value = pl.d; 
+    document.getElementById('selectCantiere').value = pl.c; 
+    document.getElementById('notePlan').value = pl.n || ''; 
+    
+    // Mostra i dipendenti assegnati con pulsante di rimozione
+    const currentDipendenti = document.getElementById('current-dipendenti') || 
+      (() => {
+        const div = document.createElement('div');
+        div.id = 'current-dipendenti';
+        div.innerHTML = '<strong>Dipendenti assegnati:</strong>';
+        document.querySelector('#pianificazione').insertBefore(div, document.querySelector('#notePlan'));
+        return div;
+      })();
+    
+    currentDipendenti.innerHTML = '<strong>Dipendenti assegnati:</strong>';
+    
+    pl.p.forEach(dipendenteId => {
+      const dip = persone.find(p => p.id === dipendenteId);
+      if (dip) {
+        const div = document.createElement('div');
+        div.className = 'dipendente-item';
+        div.innerHTML = `
+          ${dip.n} ${dip.c}
+          <button class="remove-btn" onclick="removeFromPlan('${pl.id}', '${dipendenteId}')">
+            Rimuovi
+          </button>
+        `;
+        currentDipendenti.appendChild(div);
+      }
+    });
+    
+    // Seleziona i dipendenti assegnati
+    Array.from(document.getElementById('selectPers').options).forEach(o => {
+      o.selected = pl.p.includes(o.value);
+      o.hidden = false; // Mostra tutti i dipendenti durante la modifica
+    });
+    
+    renderPianificazione();
+  }
+};
 
 // Rimuovi dipendente da un piano
 window.removeFromPlan = async (planId, dipendenteId) => {
@@ -374,23 +419,6 @@ window.removeFromPlan = async (planId, dipendenteId) => {
       
       loadAll();
     }
-  }
-};
-
-window.editPlan = id => { 
-  const pl = piani.find(x => x.id === id); 
-  if(pl) { 
-    document.getElementById('dataPlan').value = pl.d; 
-    document.getElementById('selectCantiere').value = pl.c; 
-    document.getElementById('notePlan').value = pl.n || ''; 
-    
-    // Seleziona i dipendenti assegnati
-    Array.from(document.getElementById('selectPers').options).forEach(o => {
-      o.selected = pl.p.includes(o.value);
-      o.hidden = false; // Mostra tutti i dipendenti durante la modifica
-    });
-    
-    renderPianificazione();
   }
 };
 
@@ -462,6 +490,10 @@ document.getElementById('btnAddPlan').onclick = async () => {
   document.getElementById('selectCantiere').value = '';
   document.getElementById('notePlan').value = '';
   Array.from(document.getElementById('selectPers').options).forEach(o => o.selected = false);
+  
+  // Rimuovi il pannello dei dipendenti assegnati
+  const currentDipendenti = document.getElementById('current-dipendenti');
+  if (currentDipendenti) currentDipendenti.remove();
 };
 
 // Anteprima annuale
