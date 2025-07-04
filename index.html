@@ -3,34 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gestione Cantieri & Personale – v5</title>
+  <title>Gestione Cantieri & Personale – v6</title>
   <style>
     body{font-family:Arial,sans-serif;background:#f9f9f9;margin:20px;}
     h1,h2,h3{color:#2c3e50;}
     .container{max-width:1100px;margin:auto;}
     .tabs{display:flex;gap:10px;margin-bottom:20px;}
-    .tab{background:#34495e;color:#fff;padding:10px 20px;border-radius:4px 4px 0 0;cursor:pointer;}
+    .tab{background:#34495e;color:#fff;padding:8px 16px;border-radius:4px 4px 0 0;cursor:pointer;font-size:14px;}
     .tab.active{background:#2c3e50;font-weight:bold;}
     .content{background:#fff;padding:20px;border-radius:0 4px 4px 4px;box-shadow:0 2px 5px rgba(0,0,0,0.1);display:none;}
     .content.active{display:block;}
-    input,select,textarea,button{width:100%;padding:8px;margin-top:6px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;}
-    select[multiple]{height:130px;}
-    button{background:#3498db;color:#fff;border:none;cursor:pointer;}
+    input,select,textarea{width:100%;padding:6px;margin-top:6px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;font-size:14px;}
+    select[multiple]{height:120px;}
+    button, .btn-action{padding:4px 8px;font-size:12px;border:none;border-radius:4px;cursor:pointer;}
+    button {background:#3498db;color:#fff;margin-top:6px;}
     button:hover{background:#2980b9;}
-    table{width:100%;border-collapse:collapse;margin-top:20px;}
-    th,td{border:1px solid #ccc;padding:8px;text-align:left;word-wrap:break-word;}
-    th{background:#34495e;color:#fff;}
-    .filter-input{margin-bottom:10px;padding:6px;width:100%;box-sizing:border-box;}
-    .btn-edit{background:#1abc9c;color:#fff;padding:5px 10px;border:none;cursor:pointer;}
-    .btn-delete{background:#e74c3c;color:#fff;padding:5px 10px;border:none;cursor:pointer;}
-    .btn-edit:hover{background:#16a085;} .btn-delete:hover{background:#c0392b;}
+    .btn-action {margin:0 2px;color:#fff;}
+    .btn-edit {background:#1abc9c;}
+    .btn-delete {background:#e74c3c;}
+    .btn-edit:hover {background:#16a085;}
+    .btn-delete:hover {background:#c0392b;}
+    table{width:100%;border-collapse:collapse;margin-top:10px;}
+    th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top;color:#2c3e50;font-size:13px;}
+    th{background:#34495e;color:#fff;font-size:14px;}
+    .filter-input{margin-bottom:10px;padding:6px;width:100%;box-sizing:border-box;font-size:14px;}
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div class="container">
-    <h1>Gestione Cantieri & Personale – v5</h1>
+    <h1>Gestione Cantieri & Personale – v6</h1>
     <div class="tabs">
       <div class="tab active" data-tab="cantieri">Cantieri</div>
       <div class="tab" data-tab="personale">Personale</div>
@@ -40,10 +43,10 @@
 
     <!-- CANTIERI -->
     <div id="cantieri" class="content active">
-      <h2>Cantieri – revision v5</h2>
+      <h2>Cantieri – revision v6</h2>
       <input id="filterCantieri" class="filter-input" placeholder="🔍 Cerca cantieri..." />
       <input id="nomeCantiere" placeholder="Inserisci nome cantiere" />
-      <button id="btnSaveCant">Salva</button>
+      <button id="btnSaveCant">Salva cantiere</button>
       <table>
         <thead><tr><th>Cantiere</th><th>Revision</th><th>Data</th><th>Dipendenti</th><th>Note</th><th>Azioni</th></tr></thead>
         <tbody id="tbodyCantieri"></tbody>
@@ -58,7 +61,7 @@
       <input id="cognomePersona" placeholder="Cognome" />
       <input id="mansionePersona" placeholder="Mansione" />
       <textarea id="notePersona" placeholder="Note (opzionale)"></textarea>
-      <button id="btnSavePers">Salva</button>
+      <button id="btnSavePers">Salva persona</button>
       <table>
         <thead><tr><th>Nome</th><th>Cognome</th><th>Mansione</th><th>Note</th><th>Azioni</th></tr></thead>
         <tbody id="tbodyPers"></tbody>
@@ -72,7 +75,7 @@
       <select id="selectCantiere"><option disabled selected value="">Seleziona cantiere</option></select>
       <select id="selectPers" multiple><option disabled>Dipendenti</option></select>
       <textarea id="notePlan" placeholder="Note intervento (opzionale)"></textarea>
-      <button id="btnAddPlan">Assegna</button>
+      <button id="btnAddPlan">Assegna intervento</button>
 
       <h3>📅 Anteprima giorno selezionato</h3>
       <table>
@@ -99,294 +102,238 @@
     </div>
   </div>
 
-<script>
-(() => {
-  const VERSION = 5;
-  firebase.initializeApp({
-    apiKey: "AIzaSyCuuDAmZeR0TV7FZHt8uK4LQRrfCyGMtNA",
-    authDomain: "gestione-cantieri-5c820.firebaseapp.com",
-    projectId: "gestione-cantieri-5c820"
-  });
-  const db = firebase.firestore();
+  <script>
+  (() => {
+    const VERSION = 6;
+    firebase.initializeApp({
+      apiKey: "AIzaSyCuuDAmZeR0TV7FZHt8uK4LQRrfCyGMtNA",
+      authDomain: "gestione-cantieri-5c820.firebaseapp.com",
+      projectId: "gestione-cantieri-5c820"
+    });
+    const db = firebase.firestore();
+    let cantieri = [], persone = [], piani = [], editCant=null, editPers=null, editPlan=null;
 
-  let cantieri = [], persone = [], piani = [];
-  let editCant = null, editPers = null, editPlan = null;
+    document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+    function switchTab(tab){
+      document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+      document.querySelectorAll('.content').forEach(c=>c.classList.toggle('active',c.id===tab));
+      if(tab==='cantieri') renderCantieri();
+      if(tab==='personale') renderPers();
+      if(tab==='pianificazione') { initPlan(); renderDailyPreview(document.getElementById('dataPlan').value); }
+      if(tab==='annuale') renderAnnual();
+    }
 
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.onclick = () => switchTab(tab.dataset.tab);
-  });
-
-  async function caricaDati() {
-    [cantieri, persone, piani] = await Promise.all([
-      db.collection('cantieri').get().then(s => s.docs.map(d => ({ id: d.id, ...d.data() }))),
-      db.collection('persone').get().then(s => s.docs.map(d => ({ id: d.id, ...d.data() }))),
-      db.collection('piani').get().then(s => s.docs.map(d => ({ id: d.id, ...d.data() })))
-    ]);
-    renderCantieri();
-    renderPers();
-    initPlan();
-    renderPlan();
-    renderAnnual();
-    if (document.querySelector('.tab.active').dataset.tab === 'pianificazione') {
+    async function loadAll(){
+      [cantieri,persone,piani] = await Promise.all([
+        db.collection('cantieri').get().then(s=>s.docs.map(d=>({id:d.id,...d.data()}))),
+        db.collection('persone').get().then(s=>s.docs.map(d=>({id:d.id,...d.data()}))),
+        db.collection('piani').get().then(s=>s.docs.map(d=>({id:d.id,...d.data()})))
+      ]);
+      renderCantieri();
+      renderPers();
+      initPlan();
+      renderPlan();
+      renderAnnual();
       renderDailyPreview(document.getElementById('dataPlan').value);
     }
-  }
 
-  function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-    document.querySelectorAll('.content').forEach(c => c.classList.toggle('active', c.id === tab));
-    if (tab === 'cantieri') renderCantieri();
-    if (tab === 'personale') renderPers();
-    if (tab === 'pianificazione') { initPlan(); renderDailyPreview(document.getElementById('dataPlan').value); }
-    if (tab === 'annuale') renderAnnual();
-  }
-
-  // --- CANTIERI ---
-  document.getElementById('btnSaveCant').onclick = async () => {
-    const nome = document.getElementById('nomeCantiere').value.trim();
-    if (!nome) return alert('Inserisci nome');
-    if (editCant) {
-      await db.collection('cantieri').doc(editCant).update({ nome });
-      editCant = null;
-      document.getElementById('btnSaveCant').textContent = 'Salva';
-    } else {
-      if (cantieri.some(c => c.nome === nome)) return alert('Esistente');
-      await db.collection('cantieri').add({ nome });
-    }
-    document.getElementById('nomeCantiere').value = '';
-    caricaDati();
-  };
-  document.getElementById('filterCantieri').oninput = renderCantieri;
-  function renderCantieri() {
-    const f = document.getElementById('filterCantieri').value.toLowerCase();
-    const tbody = document.getElementById('tbodyCantieri');
-    tbody.innerHTML = '';
-    cantieri.filter(c => c.nome.toLowerCase().includes(f)).forEach(c => {
-      const plans = piani.filter(p => p.c === c.nome);
-      if (plans.length) {
-        plans.sort((a, b) => a.d.localeCompare(b.d)).forEach((p, i) => {
-          const dip = p.p.map(id => {
-            const per = persone.find(x => x.id === id);
-            return per ? `${per.n} ${per.c}` : '';
-          }).join(', ');
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${i===0?c.nome:''}</td><td>${i===0?VERSION:''}</td>
-                          <td>${p.d}</td><td>${dip}</td><td>${p.n||''}</td>
-                          <td>
-                            <button class="btn-edit" data-id="${p.id}">Modifica</button>
-                            <button class="btn-delete" data-id="${p.id}">Cancella</button>
-                          </td>`;
-          tbody.appendChild(tr);
-        });
+    document.getElementById('filterCantieri').oninput = renderCantieri;
+    document.getElementById('btnSaveCant').onclick = async () => {
+      const nome = document.getElementById('nomeCantiere').value.trim();
+      if (!nome) return alert('Inserisci nome');
+      if (editCant) {
+        await db.collection('cantieri').doc(editCant).update({nome});
+        editCant=null;
+        document.getElementById('btnSaveCant').textContent='Salva cantiere';
       } else {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${c.nome}</td><td>${VERSION}</td><td>—</td><td>—</td><td>—</td><td>—</td>`;
-        tbody.appendChild(tr);
+        if (cantieri.some(c=>c.nome===nome)) return alert('Esistente');
+        await db.collection('cantieri').add({nome});
       }
-    });
-    tbody.querySelectorAll('.btn-edit').forEach(btn => {
-      btn.onclick = () => {
-        const p = piani.find(x => x.id === btn.dataset.id);
-        switchTab('pianificazione');
-        setTimeout(() => openEditPlan(p), 100);
-      };
-    });
-    tbody.querySelectorAll('.btn-delete').forEach(btn => {
-      btn.onclick = async () => {
-        if (confirm('Eliminare interv. ?')) {
-          await db.collection('piani').doc(btn.dataset.id).delete();
-          caricaDati();
+      document.getElementById('nomeCantiere').value='';
+      loadAll();
+    };
+
+    function renderCantieri(){
+      const f=document.getElementById('filterCantieri').value.toLowerCase();
+      const tb=document.getElementById('tbodyCantieri');
+      tb.innerHTML='';
+      cantieri.filter(c=>c.nome.toLowerCase().includes(f)).forEach(c=>{
+        const arr=piani.filter(p=>p.c===c.nome);
+        if(arr.length){
+          arr.sort((a,b)=>a.d.localeCompare(b.d)).forEach((p,i)=>{
+            const dip = p.p.map(id=>{ const per=persone.find(x=>x.id===id); return per? per.n+' '+per.c : ''; }).join(', ');
+            const tr=document.createElement('tr');
+            tr.innerHTML=`
+              <td>${i===0?c.nome:''}</td>
+              <td>${i===0?VERSION:''}</td>
+              <td>${p.d}</td>
+              <td>${dip}</td><td>${p.n||''}</td>
+              <td>
+                <button class="btn-action btn-edit" data-id="${p.id}">✏</button>
+                <button class="btn-action btn-delete" data-id="${p.id}">🗑</button>
+              </td>`;
+            tb.appendChild(tr);
+          });
+        } else {
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td>${c.nome}</td><td>${VERSION}</td><td>—</td><td>—</td><td>—</td><td>—</td>`;
+          tb.appendChild(tr);
         }
-      };
-    });
-  }
-
-  // --- PERSONALE ---
-  document.getElementById('btnSavePers').onclick = async () => {
-    const n = document.getElementById('nomePersona').value.trim();
-    const c = document.getElementById('cognomePersona').value.trim();
-    if (!n || !c) return alert('Compila nome/cognome');
-    const m = document.getElementById('mansionePersona').value.trim();
-    const note = document.getElementById('notePersona').value.trim();
-    if (editPers) {
-      await db.collection('persone').doc(editPers).update({ n, c, m, note });
-      editPers = null;
-      document.getElementById('btnSavePers').textContent = 'Salva';
-    } else {
-      if (persone.some(p => p.n === n && p.c === c)) return alert('Esistente');
-      await db.collection('persone').add({ n, c, m, note });
-    }
-    ['nomePersona','cognomePersona','mansionePersona','notePersona'].forEach(id=>document.getElementById(id).value='');
-    caricaDati();
-  };
-  document.getElementById('filterPers').oninput = renderPers;
-  function renderPers() {
-    const f = document.getElementById('filterPers').value.toLowerCase();
-    const tbody = document.getElementById('tbodyPers');
-    tbody.innerHTML = '';
-    persone.filter(p => `${p.n} ${p.c} ${p.m}`.toLowerCase().includes(f)).forEach(p => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.n}</td><td>${p.c}</td><td>${p.m}</td><td>${p.note||''}</td>
-                      <td>
-                        <button class="btn-edit" data-id="${p.id}">Modifica</button>
-                        <button class="btn-delete2" data-id="${p.id}">Cancella</button>
-                      </td>`;
-      tbody.appendChild(tr);
-    });
-    tbody.querySelectorAll('.btn-edit').forEach(btn => {
-      btn.onclick = () => {
-        const p = persone.find(x => x.id === btn.dataset.id);
-        document.getElementById('nomePersona').value = p.n;
-        document.getElementById('cognomePersona').value = p.c;
-        document.getElementById('mansionePersona').value = p.m;
-        document.getElementById('notePersona').value = p.note;
-        editPers = p.id;
-        document.getElementById('btnSavePers').textContent = 'Aggiorna';
-      };
-    });
-    tbody.querySelectorAll('.btn-delete2').forEach(btn => {
-      btn.onclick = async () => {
-        if (confirm('Eliminare persona?')) {
-          await db.collection('persone').doc(btn.dataset.id).delete();
-          caricaDati();
-        }
-      };
-    });
-  }
-
-  // --- PIANIFICAZIONE ---
-  document.getElementById('dataPlan').onchange = () => {
-    renderDailyPreview(document.getElementById('dataPlan').value);
-  };
-
-  function initPlan() {
-    document.getElementById('selectCantiere').innerHTML = 
-      '<option disabled selected value="">Seleziona cantiere</option>' + 
-      cantieri.map(c => `<option>${c.nome}</option>`).join('');
-    document.getElementById('selectPers').innerHTML = 
-      personasToOpts(persone);
-    document.getElementById('notePlan').value = '';
-    document.getElementById('dataPlan').value = '';
-    document.getElementById('btnAddPlan').textContent = 'Assegna';
-    editPlan = null;
-    renderPlan();
-    renderDailyPreview('');
-  }
-
-  function personasToOpts(arr) {
-    return arr.map(p => `<option value="${p.id}">${p.n} ${p.c}</option>`).join('');
-  }
-
-  document.getElementById('btnAddPlan').onclick = async () => {
-    const d = document.getElementById('dataPlan').value;
-    const c = document.getElementById('selectCantiere').value;
-    const sel = [...document.getElementById('selectPers').selectedOptions].map(o => o.value);
-    const note = document.getElementById('notePlan').value.trim();
-    if (!d || !c || sel.length === 0) return alert('Completa tutti i campi');
-    const obj = { d, c, p: sel, n: note };
-    if (editPlan) {
-      await db.collection('piani').doc(editPlan.id).update(obj);
-      editPlan = null;
-    } else {
-      await db.collection('piani').add(obj);
-    }
-    caricaDati();
-  };
-
-  function openEditPlan(p) {
-    editPlan = p;
-    document.getElementById('dataPlan').value = p.d;
-    document.getElementById('selectCantiere').value = p.c;
-    document.getElementById('notePlan').value = p.n || '';
-    document.getElementById('selectPers').innerHTML =
-      personasToOpts(persone).replace(
-        /value="([^"]+)"/g,
-        (m,id) => m + (p.p.includes(id) ? ' selected': '')
-      );
-    document.getElementById('btnAddPlan').textContent = 'Aggiorna';
-    renderDailyPreview(p.d);
-  }
-
-  function renderPlan() {
-    const tbody = document.getElementById('tbodyPlan');
-    tbody.innerHTML = '';
-    piani.sort((a, b) => a.d.localeCompare(b.d)).forEach(p => {
-      const dip = p.p.map(id => {
-        const per = persone.find(x => x.id === id);
-        return per ? `${per.n} ${per.c}` : '';
-      }).join(', ');
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.d}</td><td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td>
-                      <td>
-                        <button class="btn-edit" data-id="${p.id}">Modifica</button>
-                        <button class="btn-delete" data-id="${p.id}">Cancella</button>
-                      </td>`;
-      tbody.appendChild(tr);
-    });
-    tbody.querySelectorAll('.btn-edit').forEach(btn => {
-      btn.onclick = () => {
-        const p = piani.find(x => x.id === btn.dataset.id);
-        openEditPlan(p);
-      };
-    });
-    tbody.querySelectorAll('.btn-delete').forEach(btn => {
-      btn.onclick = async () => {
-        if (confirm('Eliminare interv.?')) {
-          await db.collection('piani').doc(btn.dataset.id).delete();
-          caricaDati();
-        }
-      };
-    });
-  }
-
-  function renderDailyPreview(date) {
-    const tbody = document.getElementById('dailyPreviewBody');
-    tbody.innerHTML = '';
-    piani.filter(p => p.d === date).forEach(p => {
-      const dip = p.p.map(id => {
-        const per = persone.find(x => x.id === id);
-        return per ? `${per.n} ${per.c}` : '';
-      }).join(', ');
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // --- ANNUALE ---
-  document.getElementById('numWeekSelect').onchange = renderAnnual;
-  document.getElementById('yearSelect').onchange = renderAnnual;
-  function renderAnnual() {
-    const tbody = document.getElementById('tbodyAnnual');
-    const w = +document.getElementById('numWeekSelect').value;
-    const y = +document.getElementById('yearSelect').value;
-    const start = getDateOfISOWeek(w, y);
-    tbody.innerHTML = '';
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      const iso = d.toISOString().split('T')[0];
-      piani.filter(p => p.d === iso).forEach(p => {
-        const dip = p.p.map(id => {
-          const per = persone.find(x => x.id === id);
-          return per ? `${per.n} ${per.c}` : '';
-        }).join(', ');
-        tbody.innerHTML += `<tr><td>${iso}</td><td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td></tr>`;
+      });
+      tb.querySelectorAll('.btn-edit').forEach(b=>{
+        b.onclick=() => { const p=piani.find(x=>x.id===b.dataset.id); switchTab('pianificazione'); setTimeout(()=>openEditPlan(p),100); };
+      });
+      tb.querySelectorAll('.btn-delete').forEach(b=>{
+        b.onclick=async()=>{ if(confirm('Elimina intervento?')){ await db.collection('piani').doc(b.dataset.id).delete(); loadAll(); }};
       });
     }
-  }
 
-  function getDateOfISOWeek(w, y) {
-    const simple = new Date(y, 0, (w - 1) * 7 + 1);
-    const dow = simple.getDay();
-    const ISOweekStart = new Date(simple);
-    if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-    else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-    return ISOweekStart;
-  }
+    document.getElementById('filterPers').oninput = renderPers;
+    document.getElementById('btnSavePers').onclick=async()=>{
+      const n=document.getElementById('nomePersona').value.trim();
+      const c=document.getElementById('cognomePersona').value.trim();
+      if(!n||!c) return alert('Compila nome e cognome');
+      const m=document.getElementById('mansionePersona').value.trim();
+      const note=document.getElementById('notePersona').value.trim();
+      if(editPers){
+        await db.collection('persone').doc(editPers).update({n,c,m,note});
+        editPers=null;
+        document.getElementById('btnSavePers').textContent='Salva persona';
+      } else {
+        if(persone.some(p=>p.n===n&&p.c===c)) return alert('Esistente');
+        await db.collection('persone').add({n,c,m,note});
+      }
+      ['nomePersona','cognomePersona','mansionePersona','notePersona'].forEach(id=>document.getElementById(id).value='');
+      loadAll();
+    };
+    function renderPers(){
+      const f=document.getElementById('filterPers').value.toLowerCase();
+      const tb=document.getElementById('tbodyPers');
+      tb.innerHTML='';
+      persone.filter(p=>`${p.n} ${p.c} ${p.m}`.toLowerCase().includes(f)).forEach(p=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
+          <td>${p.n}</td><td>${p.c}</td><td>${p.m}</td><td>${p.note||''}</td>
+          <td>
+            <button class="btn-action btn-edit" data-id="${p.id}">✏</button>
+            <button class="btn-action btn-delete" data-id="${p.id}">🗑</button>
+          </td>`;
+        tb.appendChild(tr);
+      });
+      tb.querySelectorAll('.btn-edit').forEach(b=>{
+        b.onclick=()=>{
+          const p=persone.find(x=>x.id===b.dataset.id);
+          document.getElementById('nomePersona').value=p.n;
+          document.getElementById('cognomePersona').value=p.c;
+          document.getElementById('mansionePersona').value=p.m;
+          document.getElementById('notePersona').value=p.note;
+          editPers=b.dataset.id;
+          document.getElementById('btnSavePers').textContent='Aggiorna persona';
+        };
+      });
+      tb.querySelectorAll('.btn-delete').forEach(b=>{
+        b.onclick=async()=>{ if(confirm('Elimina persona?')){ await db.collection('persone').doc(b.dataset.id).delete(); loadAll(); }};
+      });
+    }
 
-  caricaDati();
-})();
-</script>
+    document.getElementById('dataPlan').onchange=()=>renderDailyPreview(document.getElementById('dataPlan').value);
+    document.getElementById('btnAddPlan').onclick=async()=>{
+      const d=document.getElementById('dataPlan').value;
+      const c=document.getElementById('selectCantiere').value;
+      const sel=[...document.getElementById('selectPers').selectedOptions].map(o=>o.value);
+      const n=document.getElementById('notePlan').value.trim();
+      if(!d||!c||sel.length===0) return alert('Compila tutti i campi');
+      const obj={d,c,p:sel,n};
+      if(editPlan) await db.collection('piani').doc(editPlan.id).update(obj);
+      else await db.collection('piani').add(obj);
+      editPlan=null;
+      loadAll();
+    };
+
+    function initPlan(){
+      document.getElementById('selectCantiere').innerHTML =
+        '<option disabled selected value="">Seleziona cantiere</option>' +
+        cantieri.map(c=>`<option>${c.nome}</option>`).join('');
+      document.getElementById('selectPers').innerHTML = personasToOpts(persone);
+      document.getElementById('notePlan').value='';
+      document.getElementById('dataPlan').value='';
+      document.getElementById('btnAddPlan').textContent='Assegna intervento';
+      editPlan=null;
+      renderPlan();
+      renderDailyPreview('');
+    }
+
+    function personasToOpts(arr){
+      return arr.map(p=>`<option value="${p.id}">${p.n} ${p.c}</option>`).join('');
+    }
+
+    function openEditPlan(p){
+      editPlan = p;
+      document.getElementById('dataPlan').value = p.d;
+      document.getElementById('selectCantiere').value = p.c;
+      document.getElementById('notePlan').value = p.n || '';
+      document.getElementById('selectPers').innerHTML =
+        personasToOpts(persone).replace(/value="([^"]+)"/g, (m,id)=>
+          p.p.includes(id)? m+' selected':'' );
+      renderDailyPreview(p.d);
+    }
+
+    function renderPlan(){
+      const tb=document.getElementById('tbodyPlan');
+      tb.innerHTML='';
+      piani.sort((a,b)=>a.d.localeCompare(b.d)).forEach(p=>{
+        const dip=p.p.map(id=>{const per=persone.find(x=>x.id===id); return per?per.n+' '+per.c:'';}).join(', ');
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
+          <td>${p.d}</td><td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td>
+          <td>
+            <button class="btn-action btn-edit" data-id="${p.id}">✏</button>
+            <button class="btn-action btn-delete" data-id="${p.id}">🗑</button>
+          </td>`;
+        tb.appendChild(tr);
+      });
+      tb.querySelectorAll('.btn-edit').forEach(b=>b.onclick=()=>openEditPlan(piani.find(x=>x.id===b.dataset.id)));
+      tb.querySelectorAll('.btn-delete').forEach(b=>b.onclick=async()=>{ if(confirm('Elimina intervento?')){ await db.collection('piani').doc(b.dataset.id).delete(); loadAll(); }});
+    }
+
+    function renderDailyPreview(date){
+      const tb=document.getElementById('dailyPreviewBody');
+      tb.innerHTML='';
+      piani.filter(p=>p.d===date).forEach(p=>{
+        const dip=p.p.map(id=>{const per=persone.find(x=>x.id===id); return per?per.n+' '+per.c:'';}).join(', ');
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    document.getElementById('numWeekSelect').onchange = renderAnnual;
+    document.getElementById('yearSelect').onchange = renderAnnual;
+    function renderAnnual(){
+      const tbody=document.getElementById('tbodyAnnual');
+      const w=+document.getElementById('numWeekSelect').value;
+      const y=+document.getElementById('yearSelect').value;
+      const start=getDateOfISOWeek(w,y);
+      tbody.innerHTML='';
+      for(let i=0;i<7;i++){
+        const d=new Date(start); d.setDate(d.getDate()+i);
+        const iso=d.toISOString().split('T')[0];
+        piani.filter(p=>p.d===iso).forEach(p=>{
+          const dip=p.p.map(id=>{const per=persone.find(x=>x.id===id); return per?per.n+' '+per.c:'';}).join(', ');
+          tbody.innerHTML += `<tr><td>${iso}</td><td>${p.c}</td><td>${dip}</td><td>${p.n||''}</td></tr>`;
+        });
+      }
+    }
+
+    function getDateOfISOWeek(w,y){
+      const simple=new Date(y,0,(w-1)*7+1), dow=simple.getDay(), isoStart=new Date(simple);
+      if(dow<=4) isoStart.setDate(simple.getDate()-simple.getDay()+1);
+      else isoStart.setDate(simple.getDate()+8-simple.getDay());
+      return isoStart;
+    }
+
+    loadAll();
+  })();
+  </script>
 </body>
 </html>
